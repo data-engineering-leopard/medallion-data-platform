@@ -1,0 +1,9 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.idea/
+*.egg-info/
+spark-warehouse/
+derby.log
+.DS_Store
