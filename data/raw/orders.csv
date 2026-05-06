@@ -1,9 +1,0 @@
-order_id,customer_id,product,amount,status,order_date
-1,1,Laptop,999.99,completed,2024-01-15
-2,2,Phone,499.99,pending,2024-01-16
-3,1,Tablet,299.99,completed,2024-01-17
-4,3,Laptop,999.99,cancelled,
-5,4,Phone,499.99,completed,2024-01-18
-6,,Headphones,79.99,pending,2024-01-19
-7,2,Laptop,999.99,completed,2024-01-20
-8,5,Tablet,299.99,,2024-01-21

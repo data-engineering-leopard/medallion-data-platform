@@ -1,9 +1,27 @@
+# Python
 .venv/
 venv/
 __pycache__/
 *.pyc
-.idea/
+*.pyo
 *.egg-info/
+
+# PyCharm
+.idea/
+
+# Mac
+.DS_Store
+
+# Spark / Parquet output files
+data/bronze/
+data/silver/
+data/gold/
+*.parquet
+*.crc
+._SUCCESS
+.snappy.parquet
 spark-warehouse/
 derby.log
-.DS_Store
+
+# Raw data (optional - remove this if you want raw CSVs in GitHub)
+# data/raw/
