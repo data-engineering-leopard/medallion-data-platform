@@ -15,3 +15,9 @@ fields:
   - name: country
     type: string
     nullable: true
+  - name: created_date
+    type: string
+    nullable: true
+  - name: updated_date
+    type: string
+    nullable: true
