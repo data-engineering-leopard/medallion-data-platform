@@ -1,0 +1,17 @@
+table: leads
+input_path: data/bronze/leads
+output_path: data/silver/leads
+scd2: true
+scd2_key: lead_id
+effective_from_ts: "2024-01-01 00:00:00"
+scd2_track_columns:
+  - status
+  - email
+  - country
+drop_null_columns:
+  - last_name
+  - company
+uppercase_columns: []
+lowercase_columns:
+  - status
+  - lead_source

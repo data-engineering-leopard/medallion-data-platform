@@ -1,0 +1,9 @@
+lead_id,first_name,last_name,email,company,status,lead_source,country,created_date
+1,John,Smith,john.smith@acme.com,Acme Corp,Open,Web,UK,2024-01-10
+2,Sarah,Jones,sarah.jones@globex.com,Globex,Working,Phone,US,2024-01-11
+3,Mike,Brown,,Initech,Open,Email,UK,2024-01-12
+4,Lisa,White,lisa.white@umbrella.com,Umbrella Corp,Converted,Social Media,US,2024-01-13
+5,Tom,Green,tom.green@hooli.com,Hooli,Dead,Web,,2024-01-14
+6,Emma,Black,emma.black@acme.com,Acme Corp,Working,Phone,UK,2024-01-15
+7,,Davis,davis@piedpiper.com,Pied Piper,Open,Web,US,2024-01-16
+8,James,Wilson,james.wilson@acme.com,Acme Corp,OPEN,EMAIL,UK,2024-01-17

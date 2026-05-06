@@ -1,0 +1,29 @@
+table: leads
+fields:
+  - name: lead_id
+    type: integer
+    nullable: true
+  - name: first_name
+    type: string
+    nullable: true
+  - name: last_name
+    type: string
+    nullable: true
+  - name: email
+    type: string
+    nullable: true
+  - name: company
+    type: string
+    nullable: true
+  - name: status
+    type: string
+    nullable: true
+  - name: lead_source
+    type: string
+    nullable: true
+  - name: country
+    type: string
+    nullable: true
+  - name: created_date
+    type: string
+    nullable: true
