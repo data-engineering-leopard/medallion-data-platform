@@ -3,6 +3,7 @@ input_path: data/bronze/customers
 output_path: data/silver/customers
 scd2: true
 scd2_key: id
+effective_from_ts: "2024-01-01 00:00:00"
 scd2_track_columns:
   - email
   - status

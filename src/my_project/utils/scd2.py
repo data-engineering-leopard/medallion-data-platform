@@ -13,7 +13,8 @@ def apply_scd2(
     incoming_df: DataFrame,
     existing_df: DataFrame,
     scd2_key: str,
-    track_columns: list
+    track_columns: list,
+    effective_from_ts: str = None
 ) -> DataFrame:
     """
     Applies SCD2 logic to merge incoming data with existing data.
@@ -27,13 +28,18 @@ def apply_scd2(
     Returns the full updated DataFrame including all historical versions.
     """
 
-    # ===========================
-    # STEP 1: Add SCD2 columns to incoming records
-    # These are brand new versions so they are all current
-    # ===========================
+    # Use provided timestamp or default to current time
+    # Providing a historical timestamp is useful when loading
+    # historical data where records predate today
+    effective_from = (
+        F.to_timestamp(F.lit(effective_from_ts))
+        if effective_from_ts
+        else F.current_timestamp()
+    )
+
     incoming_with_meta = (
         incoming_df
-        .withColumn("effective_from", F.current_timestamp())
+        .withColumn("effective_from", effective_from)
         .withColumn(
             "effective_to",
             F.to_timestamp(F.lit(MAX_DATE))

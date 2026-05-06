@@ -99,9 +99,18 @@ def run_silver_table(
     if config.get("scd2", False):
         logger.info(f"Applying SCD2 for table: {config['table']}")
 
-        # Load existing silver data if it exists
-        if os.path.exists(output_path):
+        # Check if parquet files actually exist in the output path
+        # The folder may exist but be empty if created with mkdir
+        parquet_files = glob.glob(f"{output_path}/*.parquet")
+        has_existing_data = (
+                os.path.exists(output_path) and len(parquet_files) > 0
+        )
+
+        if has_existing_data:
             existing_df = spark.read.parquet(output_path)
+            # Cache existing data into memory before we overwrite the path
+            existing_df = existing_df.cache()
+            existing_df.count()  # Force cache to materialise
         else:
             existing_df = spark.createDataFrame([], cleaned_df.schema)
 
@@ -110,7 +119,8 @@ def run_silver_table(
             incoming_df=cleaned_df,
             existing_df=existing_df,
             scd2_key=config["scd2_key"],
-            track_columns=config["scd2_track_columns"]
+            track_columns=config["scd2_track_columns"],
+            effective_from_ts=config.get("effective_from_ts", None)
         )
     else:
         logger.info(
