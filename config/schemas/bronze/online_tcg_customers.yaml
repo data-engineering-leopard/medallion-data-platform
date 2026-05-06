@@ -1,0 +1,17 @@
+table: customers
+fields:
+  - name: id
+    type: integer
+    nullable: true
+  - name: name
+    type: string
+    nullable: true
+  - name: email
+    type: string
+    nullable: true
+  - name: status
+    type: string
+    nullable: true
+  - name: country
+    type: string
+    nullable: true

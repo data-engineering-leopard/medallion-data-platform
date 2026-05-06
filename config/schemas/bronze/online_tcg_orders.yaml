@@ -1,0 +1,20 @@
+table: orders
+fields:
+  - name: order_id
+    type: integer
+    nullable: true
+  - name: customer_id
+    type: integer
+    nullable: true
+  - name: product
+    type: string
+    nullable: true
+  - name: amount
+    type: float
+    nullable: true
+  - name: status
+    type: string
+    nullable: true
+  - name: order_date
+    type: string
+    nullable: true
