@@ -1,0 +1,31 @@
+table: dim_customers
+input_path: data/silver/customers
+output_path: data/gold/dim_customers
+fields:
+  - name: customer_key
+    type: long
+    nullable: false
+  - name: customer_id
+    type: integer
+    nullable: false
+  - name: name
+    type: string
+    nullable: true
+  - name: email
+    type: string
+    nullable: true
+  - name: status
+    type: string
+    nullable: true
+  - name: country
+    type: string
+    nullable: true
+  - name: effective_from
+    type: timestamp
+    nullable: false
+  - name: effective_to
+    type: timestamp
+    nullable: false
+  - name: is_current
+    type: boolean
+    nullable: false

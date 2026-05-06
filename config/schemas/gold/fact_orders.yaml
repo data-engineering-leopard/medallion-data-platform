@@ -1,0 +1,26 @@
+table: fact_orders
+input_path: data/silver/orders
+dim_customers_path: data/gold/dim_customers
+output_path: data/gold/fact_orders
+fields:
+  - name: order_id
+    type: integer
+    nullable: false
+  - name: customer_key
+    type: long
+    nullable: true
+  - name: customer_id
+    type: integer
+    nullable: true
+  - name: product
+    type: string
+    nullable: true
+  - name: amount
+    type: float
+    nullable: true
+  - name: status
+    type: string
+    nullable: true
+  - name: order_date
+    type: string
+    nullable: true
