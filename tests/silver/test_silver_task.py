@@ -251,3 +251,96 @@ class TestRunSilver:
 
         assert os.path.exists(str(tmp_path / "silver/customers"))
         assert os.path.exists(str(tmp_path / "silver/orders"))
+
+class TestSilverQuarantine:
+
+    def test_quarantine_written_for_records_missing_dates(
+        self, spark, tmp_path
+    ):
+        """Records missing both date columns should be written to quarantine"""
+        from pyspark.sql.types import StructType, StructField, StringType, IntegerType
+
+        bronze_path = str(tmp_path / "bronze/customers_q")
+        silver_path = str(tmp_path / "silver/customers_q")
+        quarantine_path = str(tmp_path / "quarantine/customers_q")
+
+        schema = StructType([
+            StructField("id", IntegerType(), True),
+            StructField("name", StringType(), True),
+            StructField("email", StringType(), True),
+            StructField("status", StringType(), True),
+            StructField("country", StringType(), True),
+            StructField("created_date", StringType(), True),
+            StructField("updated_date", StringType(), True)
+        ])
+
+        spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK",
+             "2024-01-01", None),
+            (2, "BOB", "bob@email.com", "active", "US", None, None)
+        ], schema).write.parquet(bronze_path)
+
+        config = {
+            "table": "customers",
+            "input_path": bronze_path,
+            "output_path": silver_path,
+            "quarantine_path": quarantine_path,
+            "scd2": True,
+            "scd2_key": "id",
+            "effective_from_column": "updated_date",
+            "effective_from_fallback_column": "created_date",
+            "scd2_track_columns": ["email", "status", "country"],
+            "drop_null_columns": [],
+            "uppercase_columns": [],
+            "lowercase_columns": []
+        }
+
+        run_silver_table(spark, config)
+
+        assert os.path.exists(quarantine_path)
+        quarantine_df = spark.read.parquet(quarantine_path)
+        assert quarantine_df.count() == 1
+
+    def test_valid_records_not_in_quarantine(self, spark, tmp_path):
+        """Valid records should not appear in quarantine"""
+        from pyspark.sql.types import StructType, StructField, StringType, IntegerType
+
+        bronze_path = str(tmp_path / "bronze/customers_v")
+        silver_path = str(tmp_path / "silver/customers_v")
+        quarantine_path = str(tmp_path / "quarantine/customers_v")
+
+        schema = StructType([
+            StructField("id", IntegerType(), True),
+            StructField("name", StringType(), True),
+            StructField("email", StringType(), True),
+            StructField("status", StringType(), True),
+            StructField("country", StringType(), True),
+            StructField("created_date", StringType(), True),
+            StructField("updated_date", StringType(), True)
+        ])
+
+        spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK",
+             "2024-01-01", None)
+        ], schema).write.parquet(bronze_path)
+
+        config = {
+            "table": "customers",
+            "input_path": bronze_path,
+            "output_path": silver_path,
+            "quarantine_path": quarantine_path,
+            "scd2": True,
+            "scd2_key": "id",
+            "effective_from_column": "updated_date",
+            "effective_from_fallback_column": "created_date",
+            "scd2_track_columns": ["email", "status", "country"],
+            "drop_null_columns": [],
+            "uppercase_columns": [],
+            "lowercase_columns": []
+        }
+
+        run_silver_table(spark, config)
+
+        if os.path.exists(quarantine_path):
+            quarantine_df = spark.read.parquet(quarantine_path)
+            assert quarantine_df.count() == 0

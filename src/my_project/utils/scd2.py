@@ -1,7 +1,7 @@
 import logging
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType, TimestampType
+from pyspark.sql.types import BooleanType
 
 logger = logging.getLogger(__name__)
 
@@ -14,31 +14,70 @@ def apply_scd2(
     existing_df: DataFrame,
     scd2_key: str,
     track_columns: list,
-    effective_from_ts: str = None
-) -> DataFrame:
+    effective_from_ts: str = None,
+    effective_from_column: str = None,
+    effective_from_fallback_column: str = None
+) -> dict:
     """
     Applies SCD2 logic to merge incoming data with existing data.
 
-    For each incoming record:
-    - If it is brand new → insert with is_current=True
-    - If it exists and tracked columns have changed → close old version,
-      insert new version
-    - If it exists and nothing has changed → keep as is, no duplicate
+    Effective from priority order:
+    1. Use effective_from_column value if not null (e.g. updated_date)
+    2. Fall back to effective_from_fallback_column (e.g. created_date)
+    3. Fall back to effective_from_ts if provided
+    4. Fall back to current_timestamp()
 
-    Returns the full updated DataFrame including all historical versions.
+    Records missing both date columns are quarantined.
+
+    Returns a dict with two DataFrames:
+        - valid: records that passed validation and were processed
+        - quarantine: records missing required date columns
     """
 
-    # Use provided timestamp or default to current time
-    # Providing a historical timestamp is useful when loading
-    # historical data where records predate today
-    effective_from = (
-        F.to_timestamp(F.lit(effective_from_ts))
-        if effective_from_ts
-        else F.current_timestamp()
-    )
+    # ===========================
+    # STEP 1: Separate quarantine records
+    # Records missing both date columns cannot be processed
+    # ===========================
+    if effective_from_column and effective_from_fallback_column:
+        quarantine_df = incoming_df.filter(
+            F.col(effective_from_column).isNull() &
+            F.col(effective_from_fallback_column).isNull()
+        )
+        valid_incoming_df = incoming_df.filter(
+            F.col(effective_from_column).isNotNull() |
+            F.col(effective_from_fallback_column).isNotNull()
+        )
 
+        if quarantine_df.count() > 0:
+            logger.warning(
+                f"Quarantining {quarantine_df.count()} records "
+                f"missing both date columns"
+            )
+    else:
+        quarantine_df = spark.createDataFrame([], incoming_df.schema)
+        valid_incoming_df = incoming_df
+
+    # ===========================
+    # STEP 2: Determine effective_from for each record
+    # ===========================
+    if effective_from_column and effective_from_fallback_column:
+        # Use updated_date if available, fall back to created_date
+        effective_from = F.coalesce(
+            F.to_timestamp(F.col(effective_from_column)),
+            F.to_timestamp(F.col(effective_from_fallback_column))
+        )
+    elif effective_from_ts:
+        # Use hardcoded timestamp from config
+        effective_from = F.to_timestamp(F.lit(effective_from_ts))
+    else:
+        # Default to current time
+        effective_from = F.current_timestamp()
+
+    # ===========================
+    # STEP 3: Add SCD2 metadata columns to valid incoming records
+    # ===========================
     incoming_with_meta = (
-        incoming_df
+        valid_incoming_df
         .withColumn("effective_from", effective_from)
         .withColumn(
             "effective_to",
@@ -48,24 +87,23 @@ def apply_scd2(
     )
 
     # ===========================
-    # STEP 2: Handle empty existing table
-    # If there is no existing data, all incoming records are new
+    # STEP 4: Handle empty existing table
     # ===========================
     if existing_df.count() == 0:
         logger.info(
-            f"No existing data found — inserting "
+            f"No existing data — inserting "
             f"{incoming_with_meta.count()} new records"
         )
-        return incoming_with_meta
+        return {
+            "valid": incoming_with_meta,
+            "quarantine": quarantine_df
+        }
 
     # ===========================
-    # STEP 3: Identify changed records
-    # Join incoming against current existing records and compare
-    # tracked columns to find what has actually changed
+    # STEP 5: Identify changed records
     # ===========================
     current_existing = existing_df.filter(F.col("is_current") == True)
 
-    # Build a condition that detects any change in any tracked column
     change_condition = None
     for col in track_columns:
         condition = (
@@ -88,22 +126,17 @@ def apply_scd2(
         how="left"
     )
 
-    # Records where something tracked has changed
     changed = joined.filter(change_condition).select("incoming.*")
-
-    # Records that are completely new (no match in existing)
     new_records = joined.filter(
         F.col(f"existing.{scd2_key}").isNull()
     ).select("incoming.*")
 
-    # Records where nothing has changed — we keep existing, discard incoming
     unchanged_keys = joined.filter(
         ~change_condition
     ).select(F.col(f"incoming.{scd2_key}").alias(scd2_key))
 
     # ===========================
-    # STEP 4: Close old versions of changed records
-    # Set effective_to to now and is_current to False
+    # STEP 6: Close old versions of changed records
     # ===========================
     changed_keys = changed.select(scd2_key)
 
@@ -115,12 +148,7 @@ def apply_scd2(
     )
 
     # ===========================
-    # STEP 5: Assemble the final DataFrame
-    # - Historical records (already closed, is_current=False)
-    # - Newly closed records (old versions of changed records)
-    # - New versions of changed records
-    # - Brand new records
-    # - Unchanged records (kept as is)
+    # STEP 7: Assemble the final DataFrame
     # ===========================
     historical = existing_df.filter(F.col("is_current") == False)
 
@@ -129,7 +157,7 @@ def apply_scd2(
         .join(unchanged_keys, on=scd2_key, how="inner")
     )
 
-    result = (
+    valid_result = (
         historical
         .unionByName(closed_records)
         .unionByName(changed)
@@ -141,7 +169,11 @@ def apply_scd2(
         f"SCD2 complete — "
         f"new: {new_records.count()}, "
         f"changed: {changed.count()}, "
-        f"unchanged: {unchanged_keys.count()}"
+        f"unchanged: {unchanged_keys.count()}, "
+        f"quarantined: {quarantine_df.count()}"
     )
 
-    return result
+    return {
+        "valid": valid_result,
+        "quarantine": quarantine_df
+    }

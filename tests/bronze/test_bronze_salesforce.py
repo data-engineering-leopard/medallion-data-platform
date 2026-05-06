@@ -38,7 +38,6 @@ class TestSchemas:
         assert "created_date" in field_names
         assert "updated_date" in field_names
 
-
 class TestLoadLeads:
 
     def test_leads_loads_all_rows(self, spark):
