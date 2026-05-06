@@ -1,0 +1,46 @@
+table: dim_leads
+input_path: data/silver/leads
+output_path: data/gold/dim_leads
+fields:
+  - name: lead_key
+    type: long
+    nullable: false
+  - name: lead_id
+    type: integer
+    nullable: false
+  - name: first_name
+    type: string
+    nullable: true
+  - name: last_name
+    type: string
+    nullable: true
+  - name: email
+    type: string
+    nullable: true
+  - name: company
+    type: string
+    nullable: true
+  - name: status
+    type: string
+    nullable: true
+  - name: lead_source
+    type: string
+    nullable: true
+  - name: country
+    type: string
+    nullable: true
+  - name: created_date
+    type: string
+    nullable: true
+  - name: updated_date
+    type: string
+    nullable: true
+  - name: effective_from
+    type: timestamp
+    nullable: false
+  - name: effective_to
+    type: timestamp
+    nullable: false
+  - name: is_current
+    type: boolean
+    nullable: false
