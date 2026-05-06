@@ -1,0 +1,9 @@
+id,name,email,status,country
+1,alice,alice@email.com,active,UK
+2,BOB,bob@email.com,ACTIVE,US
+3,Charlie,,inactive,UK
+4,diana,diana@email.com,active,US
+5,eve,eve@email.com,active,
+6,frank,frank@email.com,inactive,UK
+7,,ghost@email.com,active,US
+8,hannah,hannah@email.com,active,UK
