@@ -1,0 +1,11 @@
+table: orders
+input_path: data/bronze/orders
+output_path: data/silver/orders
+scd2: false
+drop_null_columns:
+  - customer_id
+  - order_date
+uppercase_columns:
+  - product
+lowercase_columns:
+  - status
