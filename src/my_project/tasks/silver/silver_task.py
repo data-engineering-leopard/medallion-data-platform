@@ -34,24 +34,21 @@ def load_silver_config(config_path: str) -> list:
 
 def apply_cleaning_rules(df: DataFrame, config: dict) -> DataFrame:
     """
-    Applies cleaning rules defined in the silver YAML config to a DataFrame.
+    Applies cleaning rules defined in the silver YAML config.
 
     Supported rules:
     - drop_null_columns: remove rows where these columns are null
     - uppercase_columns: uppercase the values in these columns
     - lowercase_columns: lowercase the values in these columns
     """
-    # Drop nulls on specified columns
     for col in config.get("drop_null_columns", []):
         df = df.filter(F.col(col).isNotNull())
         logger.info(f"Dropped nulls on column: {col}")
 
-    # Uppercase specified columns
     for col in config.get("uppercase_columns", []):
         df = df.withColumn(col, F.upper(F.col(col)))
         logger.info(f"Uppercased column: {col}")
 
-    # Lowercase specified columns
     for col in config.get("lowercase_columns", []):
         df = df.withColumn(col, F.lower(F.col(col)))
         logger.info(f"Lowercased column: {col}")
@@ -70,11 +67,8 @@ def run_silver_table(
 
     Reads from bronze parquet, applies cleaning rules,
     applies SCD2 if configured, writes to silver parquet.
-
-    bronze_base_path and silver_base_path override the paths
-    in the config — used in tests to write to tmp_path.
+    Quarantined records are written to quarantine path.
     """
-    # Allow path overrides for testing
     input_path = (
         f"{bronze_base_path}/{config['table']}"
         if bronze_base_path
@@ -85,6 +79,7 @@ def run_silver_table(
         if silver_base_path
         else config["output_path"]
     )
+    quarantine_path = config.get("quarantine_path", None)
 
     logger.info(f"Running silver for table: {config['table']}")
     logger.info(f"Reading from: {input_path}")
@@ -99,33 +94,47 @@ def run_silver_table(
     if config.get("scd2", False):
         logger.info(f"Applying SCD2 for table: {config['table']}")
 
-        # Check if parquet files actually exist in the output path
-        # The folder may exist but be empty if created with mkdir
+        # Load existing silver data if it exists
         parquet_files = glob.glob(f"{output_path}/*.parquet")
         has_existing_data = (
-                os.path.exists(output_path) and len(parquet_files) > 0
+            os.path.exists(output_path) and len(parquet_files) > 0
         )
 
         if has_existing_data:
             existing_df = spark.read.parquet(output_path)
-            # Cache existing data into memory before we overwrite the path
             existing_df = existing_df.cache()
-            existing_df.count()  # Force cache to materialise
+            existing_df.count()
         else:
             existing_df = spark.createDataFrame([], cleaned_df.schema)
 
-        result_df = apply_scd2(
+        scd2_result = apply_scd2(
             spark=spark,
             incoming_df=cleaned_df,
             existing_df=existing_df,
             scd2_key=config["scd2_key"],
             track_columns=config["scd2_track_columns"],
+            effective_from_column=config.get(
+                "effective_from_column", None
+            ),
+            effective_from_fallback_column=config.get(
+                "effective_from_fallback_column", None
+            ),
             effective_from_ts=config.get("effective_from_ts", None)
         )
+
+        result_df = scd2_result["valid"]
+        quarantine_df = scd2_result["quarantine"]
+
+        # Write quarantine records if any exist
+        if quarantine_path and quarantine_df.count() > 0:
+            quarantine_df.write.mode("append").parquet(quarantine_path)
+            logger.warning(
+                f"Written {quarantine_df.count()} quarantined records "
+                f"to: {quarantine_path}"
+            )
+
     else:
-        logger.info(
-            f"Append only for table: {config['table']}"
-        )
+        logger.info(f"Append only for table: {config['table']}")
         result_df = cleaned_df
 
     # Write to silver
@@ -162,8 +171,6 @@ def run_silver(
 
 
 if __name__ == "__main__":
-    from pyspark.sql import SparkSession
-
     spark = SparkSession.builder \
         .master("local[*]") \
         .appName("silver_task") \
