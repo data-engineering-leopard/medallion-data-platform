@@ -1,0 +1,16 @@
+table: customers
+input_path: data/bronze/customers
+output_path: data/silver/customers
+scd2: true
+scd2_key: id
+scd2_track_columns:
+  - email
+  - status
+  - country
+drop_null_columns:
+  - name
+  - country
+uppercase_columns:
+  - name
+lowercase_columns:
+  - status
