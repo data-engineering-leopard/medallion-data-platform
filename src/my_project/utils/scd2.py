@@ -1,9 +1,9 @@
-import logging
+from my_project.utils.logger import get_logger
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import BooleanType
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 MAX_DATE = "9999-12-31 00:00:00"
 

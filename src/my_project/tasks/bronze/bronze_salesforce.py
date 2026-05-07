@@ -1,10 +1,10 @@
-import logging
+from my_project.utils.logger import get_logger
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import StructType
 from my_project.utils.schema_loader import load_schema_from_yaml
 from my_project.utils.schema_validator import validate_schema
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 LEADS_SCHEMA_PATH = "config/schemas/bronze/salesforce_leads.yaml"
 
@@ -50,14 +50,26 @@ def run_bronze_salesforce(
     logger.info("Bronze task for Salesforce complete")
 
 
-if __name__ == "__main__":
+def main():
+    from my_project.utils.logger import setup_logging
+    setup_logging()
+
+    import argparse
+    parser = argparse.ArgumentParser(description="Bronze Salesforce task")
+    parser.add_argument("--leads-input", required=True)
+    parser.add_argument("--output-path", required=True)
+    args = parser.parse_args()
+
     spark = SparkSession.builder \
-        .master("local[*]") \
         .appName("bronze_salesforce") \
         .getOrCreate()
 
     run_bronze_salesforce(
         spark,
-        leads_input="data/raw/sf_leads.csv",
-        output_path="data/bronze"
+        leads_input=args.leads_input,
+        output_path=args.output_path
     )
+
+
+if __name__ == "__main__":
+    main()

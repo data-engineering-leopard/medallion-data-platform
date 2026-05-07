@@ -1,4 +1,4 @@
-import logging
+from my_project.utils.logger import get_logger
 import os
 import glob
 import yaml
@@ -6,7 +6,7 @@ from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 from my_project.utils.scd2 import apply_scd2
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def load_silver_config(config_path: str) -> list:
@@ -167,14 +167,24 @@ def run_silver(
         f"{len(configs)} tables processed"
     )
 
+def main():
+    from my_project.utils.logger import setup_logging
+    setup_logging()
 
-if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Silver task")
+    parser.add_argument("--config-path", required=True)
+    args = parser.parse_args()
+
     spark = SparkSession.builder \
-        .master("local[*]") \
         .appName("silver_task") \
         .getOrCreate()
 
     run_silver(
         spark,
-        config_path="config/schemas/silver"
+        config_path=args.config_path
     )
+
+
+if __name__ == "__main__":
+    main()

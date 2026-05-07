@@ -1,9 +1,8 @@
-import logging
+from my_project.utils.logger import get_logger
 from pyspark.sql import DataFrame, SparkSession
 from my_project.utils.surrogate_key import add_surrogate_key
 
-logger = logging.getLogger(__name__)
-
+logger = get_logger(__name__)
 
 def build_dim_customers(silver_df: DataFrame) -> DataFrame:
     """
@@ -60,15 +59,26 @@ def run_dim_customers(
     dim_df.write.mode("overwrite").parquet(output_path)
     logger.info(f"Written dim_customers to: {output_path}")
 
+def main():
+    from my_project.utils.logger import setup_logging
+    setup_logging()
 
-if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Gold dim_customers task")
+    parser.add_argument("--input-path", required=True)
+    parser.add_argument("--output-path", required=True)
+    args = parser.parse_args()
+
     spark = SparkSession.builder \
-        .master("local[*]") \
         .appName("gold_dim_customers") \
         .getOrCreate()
 
     run_dim_customers(
         spark,
-        input_path="data/silver/customers",
-        output_path="data/gold/dim_customers"
+        input_path=args.input_path,
+        output_path=args.output_path
     )
+
+
+if __name__ == "__main__":
+    main()

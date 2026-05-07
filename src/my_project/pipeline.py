@@ -12,11 +12,9 @@ from my_project.utils.pipeline_config_loader import (
     get_path
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-logger = logging.getLogger(__name__)
+from my_project.utils.logger import setup_logging, get_logger
+setup_logging()
+logger = get_logger(__name__)
 
 PIPELINE_CONFIG_PATH = "config/pipeline_config.yaml"
 

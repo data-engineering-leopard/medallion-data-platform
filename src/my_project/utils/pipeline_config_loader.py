@@ -1,7 +1,7 @@
-import logging
+from my_project.utils.logger import get_logger
 import yaml
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def load_pipeline_config(config_path: str) -> dict:

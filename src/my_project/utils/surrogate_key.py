@@ -1,8 +1,8 @@
-import logging
+from my_project.utils.logger import get_logger
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def add_surrogate_key(df: DataFrame, key_column_name: str) -> DataFrame:
