@@ -1,11 +1,14 @@
+import logging
 import yaml
 from pyspark.sql.types import (
     StructType, StructField,
     StringType, IntegerType, FloatType, DoubleType,
     BooleanType, LongType, TimestampType, DateType
 )
+from my_project.utils.logger import get_logger
 
-# Maps the type names in YAML to actual PySpark types
+logger = get_logger(__name__)
+
 TYPE_MAP = {
     "string": StringType(),
     "integer": IntegerType(),
@@ -48,5 +51,10 @@ def load_schema_from_yaml(yaml_path: str) -> StructType:
         fields.append(
             StructField(field_name, TYPE_MAP[field_type], nullable)
         )
+
+    logger.info(
+        f"Loaded schema for table '{config.get('table', 'unknown')}' "
+        f"with {len(fields)} fields from: {yaml_path}"
+    )
 
     return StructType(fields)

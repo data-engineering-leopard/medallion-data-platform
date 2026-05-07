@@ -1,8 +1,8 @@
-import logging
+from my_project.utils.logger import get_logger
 from pyspark.sql import DataFrame
 from pyspark.sql.types import StructType
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def validate_schema(df: DataFrame, expected_schema: StructType) -> dict:

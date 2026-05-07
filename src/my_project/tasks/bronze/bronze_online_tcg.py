@@ -1,10 +1,10 @@
-import logging
+from my_project.utils.logger import get_logger
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import StructType
 from my_project.utils.schema_loader import load_schema_from_yaml
 from my_project.utils.schema_validator import validate_schema
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Paths to the YAML schema definitions for this source system
 CUSTOMERS_SCHEMA_PATH = "config/schemas/bronze/online_tcg_customers.yaml"
@@ -101,15 +101,28 @@ def run_bronze(
     logger.info("Bronze task for Online TCG complete")
 
 
-if __name__ == "__main__":
+def main():
+    from my_project.utils.logger import setup_logging
+    setup_logging()
+
+    import argparse
+    parser = argparse.ArgumentParser(description="Bronze Online TCG task")
+    parser.add_argument("--customers-input", required=True)
+    parser.add_argument("--orders-input", required=True)
+    parser.add_argument("--output-path", required=True)
+    args = parser.parse_args()
+
     spark = SparkSession.builder \
-        .master("local[*]") \
         .appName("bronze_online_tcg") \
         .getOrCreate()
 
     run_bronze(
         spark,
-        customers_input="data/raw/customers.csv",
-        orders_input="data/raw/orders.csv",
-        output_path="data/bronze"
+        customers_input=args.customers_input,
+        orders_input=args.orders_input,
+        output_path=args.output_path
     )
+
+
+if __name__ == "__main__":
+    main()
