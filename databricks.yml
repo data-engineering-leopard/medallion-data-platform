@@ -1,0 +1,128 @@
+bundle:
+  name: my-pyspark-project
+
+variables:
+  bronze_path:
+    default: /mnt/data/bronze
+  silver_path:
+    default: /mnt/data/silver
+  gold_path:
+    default: /mnt/data/gold
+  quarantine_path:
+    default: /mnt/quarantine/silver
+  spark_version:
+    default: "15.4.x-scala2.12"
+  node_type_id:
+    default: Standard_DS3_v2
+  num_workers:
+    default: 2
+
+targets:
+  dev:
+    mode: development
+    workspace:
+      host: ${var.databricks_host}
+    variables:
+      bronze_path: /mnt/dev/bronze
+      silver_path: /mnt/dev/silver
+      gold_path: /mnt/dev/gold
+      quarantine_path: /mnt/dev/quarantine/silver
+
+# ===========================
+# SHARED CLUSTER DEFINITION
+# ===========================
+
+# This is referenced by all jobs using *default_cluster
+# Change cluster specs here and it applies everywhere
+x-default-cluster: &default_cluster
+  spark_version: ${var.spark_version}
+  node_type_id: ${var.node_type_id}
+  num_workers: ${var.num_workers}
+
+resources:
+  jobs:
+
+    # ===========================
+    # BRONZE JOBS
+    # ===========================
+
+    bronze_online_tcg:
+      name: "[DEV] Bronze — Online TCG"
+      tasks:
+        - task_key: run_bronze_online_tcg
+          python_wheel_task:
+            package_name: my_project
+            entry_point: bronze_online_tcg
+            parameters:
+              - "--customers-input=/mnt/raw/customers.csv"
+              - "--orders-input=/mnt/raw/orders.csv"
+              - "--output-path=${var.bronze_path}"
+          new_cluster: *default_cluster
+
+    bronze_salesforce:
+      name: "[DEV] Bronze — Salesforce"
+      tasks:
+        - task_key: run_bronze_salesforce
+          python_wheel_task:
+            package_name: my_project
+            entry_point: bronze_salesforce
+            parameters:
+              - "--leads-input=/mnt/raw/sf_leads.csv"
+              - "--output-path=${var.bronze_path}"
+          new_cluster: *default_cluster
+
+    # ===========================
+    # SILVER JOB
+    # ===========================
+
+    silver_task:
+      name: "[DEV] Silver — All Tables"
+      tasks:
+        - task_key: run_silver
+          python_wheel_task:
+            package_name: my_project
+            entry_point: silver_task
+            parameters:
+              - "--config-path=config/schemas/silver"
+          new_cluster: *default_cluster
+
+    # ===========================
+    # GOLD JOBS
+    # ===========================
+
+    gold_dim_customers:
+      name: "[DEV] Gold — dim_customers"
+      tasks:
+        - task_key: run_dim_customers
+          python_wheel_task:
+            package_name: my_project
+            entry_point: dim_customers
+            parameters:
+              - "--input-path=${var.silver_path}/customers"
+              - "--output-path=${var.gold_path}/dim_customers"
+          new_cluster: *default_cluster
+
+    gold_fact_orders:
+      name: "[DEV] Gold — fact_orders"
+      tasks:
+        - task_key: run_fact_orders
+          python_wheel_task:
+            package_name: my_project
+            entry_point: fact_orders
+            parameters:
+              - "--orders-input-path=${var.silver_path}/orders"
+              - "--dim-customers-path=${var.gold_path}/dim_customers"
+              - "--output-path=${var.gold_path}/fact_orders"
+          new_cluster: *default_cluster
+
+    gold_dim_leads:
+      name: "[DEV] Gold — dim_leads"
+      tasks:
+        - task_key: run_dim_leads
+          python_wheel_task:
+            package_name: my_project
+            entry_point: dim_leads
+            parameters:
+              - "--input-path=${var.silver_path}/leads"
+              - "--output-path=${var.gold_path}/dim_leads"
+          new_cluster: *default_cluster
