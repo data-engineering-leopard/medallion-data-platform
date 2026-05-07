@@ -1,5 +1,4 @@
 import pytest
-from pyspark.sql import SparkSession
 from pyspark.sql.types import (
     StructType, StructField, StringType, IntegerType
 )
@@ -9,14 +8,6 @@ from my_project.utils.scd2 import apply_scd2
 # ===========================
 # SESSION FIXTURES
 # ===========================
-
-@pytest.fixture(scope="session")
-def spark():
-    return SparkSession.builder \
-        .master("local[*]") \
-        .appName("test_scd2") \
-        .getOrCreate()
-
 
 @pytest.fixture(scope="session")
 def customer_schema():

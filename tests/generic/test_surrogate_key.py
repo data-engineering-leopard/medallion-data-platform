@@ -1,18 +1,8 @@
 import pytest
-from pyspark.sql import SparkSession
 from pyspark.sql.types import (
     StructType, StructField, StringType, IntegerType, LongType
 )
 from my_project.utils.surrogate_key import add_surrogate_key
-
-
-@pytest.fixture(scope="session")
-def spark():
-    return SparkSession.builder \
-        .master("local[*]") \
-        .appName("test_surrogate_key") \
-        .getOrCreate()
-
 
 @pytest.fixture
 def customer_schema():

@@ -1,6 +1,5 @@
 import pytest
 import os
-from pyspark.sql import SparkSession
 from pyspark.sql.types import (
     StructType, StructField, StringType, IntegerType,
     BooleanType, TimestampType
@@ -9,15 +8,6 @@ from my_project.tasks.gold.dim_leads import (
     build_dim_leads,
     run_dim_leads
 )
-
-
-@pytest.fixture(scope="session")
-def spark():
-    return SparkSession.builder \
-        .master("local[*]") \
-        .appName("test_gold_dim_leads") \
-        .getOrCreate()
-
 
 @pytest.fixture
 def silver_leads_schema():

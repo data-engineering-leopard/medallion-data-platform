@@ -1,6 +1,5 @@
 import pytest
 import os
-from pyspark.sql import SparkSession
 from pyspark.sql.types import (
     StructType, StructField, StringType, IntegerType,
     FloatType, LongType, BooleanType, TimestampType
@@ -9,15 +8,6 @@ from my_project.tasks.gold.fact_orders import (
     build_fact_orders,
     run_fact_orders
 )
-
-
-@pytest.fixture(scope="session")
-def spark():
-    return SparkSession.builder \
-        .master("local[*]") \
-        .appName("test_gold_fact_orders") \
-        .getOrCreate()
-
 
 @pytest.fixture
 def silver_orders_schema():

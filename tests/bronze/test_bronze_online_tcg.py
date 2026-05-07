@@ -1,6 +1,5 @@
 import pytest
 import os
-from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType
 from my_project.tasks.bronze.bronze_online_tcg import (
     load_customers,
@@ -14,14 +13,6 @@ from my_project.tasks.bronze.bronze_online_tcg import (
 # ===========================
 # SESSION FIXTURES
 # ===========================
-
-@pytest.fixture(scope="session")
-def spark():
-    return SparkSession.builder \
-        .master("local[*]") \
-        .appName("test_bronze_online_tcg") \
-        .getOrCreate()
-
 
 @pytest.fixture(scope="session")
 def customers_df(spark):

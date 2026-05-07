@@ -1,6 +1,5 @@
 import pytest
 import os
-from pyspark.sql import SparkSession
 from pyspark.sql.types import (
     StructType, StructField, StringType, IntegerType, FloatType
 )
@@ -10,14 +9,6 @@ from my_project.tasks.silver.silver_task import (
     run_silver_table,
     run_silver
 )
-
-
-@pytest.fixture(scope="session")
-def spark():
-    return SparkSession.builder \
-        .master("local[*]") \
-        .appName("test_silver_task") \
-        .getOrCreate()
 
 
 @pytest.fixture
@@ -221,7 +212,9 @@ class TestRunSilver:
             StructField("name", StringType(), True),
             StructField("email", StringType(), True),
             StructField("status", StringType(), True),
-            StructField("country", StringType(), True)
+            StructField("country", StringType(), True),
+            StructField("created_date", StringType(), True),
+            StructField("updated_date", StringType(), True)
         ])
         order_schema = StructType([
             StructField("order_id", IntegerType(), True),
@@ -231,9 +224,22 @@ class TestRunSilver:
             StructField("status", StringType(), True),
             StructField("order_date", StringType(), True)
         ])
+        leads_schema = StructType([
+            StructField("lead_id", IntegerType(), True),
+            StructField("first_name", StringType(), True),
+            StructField("last_name", StringType(), True),
+            StructField("email", StringType(), True),
+            StructField("company", StringType(), True),
+            StructField("status", StringType(), True),
+            StructField("lead_source", StringType(), True),
+            StructField("country", StringType(), True),
+            StructField("created_date", StringType(), True),
+            StructField("updated_date", StringType(), True)
+        ])
 
         spark.createDataFrame(
-            [(1, "alice", "alice@email.com", "active", "UK")],
+            [(1, "alice", "alice@email.com", "active", "UK",
+              "2024-01-01", None)],
             customer_schema
         ).write.parquet(str(tmp_path / "bronze/customers"))
 
@@ -241,6 +247,12 @@ class TestRunSilver:
             [(1, 1, "Laptop", 999.99, "completed", "2024-01-15")],
             order_schema
         ).write.parquet(str(tmp_path / "bronze/orders"))
+
+        spark.createDataFrame(
+            [(1, "John", "Smith", "john@acme.com", "Acme Corp",
+              "open", "web", "UK", "2024-01-10", None)],
+            leads_schema
+        ).write.parquet(str(tmp_path / "bronze/leads"))
 
         run_silver(
             spark,
@@ -251,6 +263,7 @@ class TestRunSilver:
 
         assert os.path.exists(str(tmp_path / "silver/customers"))
         assert os.path.exists(str(tmp_path / "silver/orders"))
+        assert os.path.exists(str(tmp_path / "silver/leads"))
 
 class TestSilverQuarantine:
 
