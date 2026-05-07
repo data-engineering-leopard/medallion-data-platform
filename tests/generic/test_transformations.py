@@ -1,21 +1,7 @@
-import pytest
-from pyspark.sql import SparkSession
 from my_project.utils.transformations import (
     filter_active_customers,
     uppercase_customer_names
 )
-
-@pytest.fixture(scope="session")
-def spark():
-    """
-    Creates a single SparkSession for all tests.
-    scope="session" means it's created once and reused,
-    rather than being recreated for every test (which is slow).
-    """
-    return SparkSession.builder \
-        .master("local[*]") \
-        .appName("test") \
-        .getOrCreate()
 
 class TestFilterActiveCustomers:
 

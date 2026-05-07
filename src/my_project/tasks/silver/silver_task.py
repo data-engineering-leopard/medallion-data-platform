@@ -55,7 +55,6 @@ def apply_cleaning_rules(df: DataFrame, config: dict) -> DataFrame:
 
     return df
 
-
 def run_silver_table(
     spark: SparkSession,
     config: dict,
@@ -65,8 +64,9 @@ def run_silver_table(
     """
     Runs the silver transformation for a single table.
 
-    Reads from bronze parquet, applies cleaning rules,
-    applies SCD2 if configured, writes to silver parquet.
+    Reads from bronze parquet, applies SCD2 if configured
+    (quarantine check and effective date happen before cleaning),
+    applies cleaning rules, writes to silver parquet.
     Quarantined records are written to quarantine path.
     """
     input_path = (
@@ -87,9 +87,6 @@ def run_silver_table(
     # Read from bronze
     incoming_df = spark.read.parquet(input_path)
 
-    # Apply cleaning rules
-    cleaned_df = apply_cleaning_rules(incoming_df, config)
-
     # Apply SCD2 or append only
     if config.get("scd2", False):
         logger.info(f"Applying SCD2 for table: {config['table']}")
@@ -105,11 +102,12 @@ def run_silver_table(
             existing_df = existing_df.cache()
             existing_df.count()
         else:
-            existing_df = spark.createDataFrame([], cleaned_df.schema)
+            existing_df = spark.createDataFrame([], incoming_df.schema)
 
+        # SCD2 runs on raw incoming data so date columns are still present
         scd2_result = apply_scd2(
             spark=spark,
-            incoming_df=cleaned_df,
+            incoming_df=incoming_df,
             existing_df=existing_df,
             scd2_key=config["scd2_key"],
             track_columns=config["scd2_track_columns"],
@@ -122,7 +120,8 @@ def run_silver_table(
             effective_from_ts=config.get("effective_from_ts", None)
         )
 
-        result_df = scd2_result["valid"]
+        # Apply cleaning rules to valid records after SCD2
+        result_df = apply_cleaning_rules(scd2_result["valid"], config)
         quarantine_df = scd2_result["quarantine"]
 
         # Write quarantine records if any exist
@@ -135,12 +134,11 @@ def run_silver_table(
 
     else:
         logger.info(f"Append only for table: {config['table']}")
-        result_df = cleaned_df
+        result_df = apply_cleaning_rules(incoming_df, config)
 
     # Write to silver
     result_df.write.mode("overwrite").parquet(output_path)
     logger.info(f"Written silver to: {output_path}")
-
 
 def run_silver(
     spark: SparkSession,

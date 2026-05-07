@@ -1,18 +1,8 @@
 import pytest
-from pyspark.sql import SparkSession
 from pyspark.sql.types import (
     StructType, StructField, StringType, IntegerType
 )
 from my_project.utils.schema_validator import validate_schema
-
-
-@pytest.fixture(scope="session")
-def spark():
-    return SparkSession.builder \
-        .master("local[*]") \
-        .appName("test_schema_validator") \
-        .getOrCreate()
-
 
 @pytest.fixture
 def expected_schema():

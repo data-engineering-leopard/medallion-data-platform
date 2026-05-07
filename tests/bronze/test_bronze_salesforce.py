@@ -1,20 +1,9 @@
-import pytest
-from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType
 from my_project.tasks.bronze.bronze_salesforce import (
     load_leads,
     get_leads_schema,
     run_bronze_salesforce
 )
-
-
-@pytest.fixture(scope="session")
-def spark():
-    return SparkSession.builder \
-        .master("local[*]") \
-        .appName("test_bronze_salesforce") \
-        .getOrCreate()
-
 
 class TestSchemas:
 

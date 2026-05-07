@@ -1,19 +1,8 @@
 import pytest
-from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 from my_project.layers.bronze import load_bronze
 from my_project.layers.silver import transform_silver
 from my_project.layers.gold import transform_gold
-
-
-@pytest.fixture(scope="session")
-def spark():
-    """Single SparkSession reused across all tests"""
-    return SparkSession.builder \
-        .master("local[*]") \
-        .appName("test_medallion") \
-        .getOrCreate()
-
 
 @pytest.fixture(scope="session")
 def raw_schema():
