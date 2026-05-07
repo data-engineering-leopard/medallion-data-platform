@@ -1,4 +1,3 @@
-import pytest
 import os
 from pyspark.sql.types import (
     StructType, StructField, StringType, IntegerType, FloatType
@@ -9,30 +8,6 @@ from my_project.tasks.silver.silver_task import (
     run_silver_table,
     run_silver
 )
-
-
-@pytest.fixture
-def customer_schema():
-    return StructType([
-        StructField("id", IntegerType(), True),
-        StructField("name", StringType(), True),
-        StructField("email", StringType(), True),
-        StructField("status", StringType(), True),
-        StructField("country", StringType(), True)
-    ])
-
-
-@pytest.fixture
-def order_schema():
-    return StructType([
-        StructField("order_id", IntegerType(), True),
-        StructField("customer_id", IntegerType(), True),
-        StructField("product", StringType(), True),
-        StructField("amount", FloatType(), True),
-        StructField("status", StringType(), True),
-        StructField("order_date", StringType(), True)
-    ])
-
 
 # ===========================
 # CONFIG LOADING TESTS

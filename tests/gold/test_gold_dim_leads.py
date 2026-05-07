@@ -9,25 +9,6 @@ from my_project.tasks.gold.dim_leads import (
     run_dim_leads
 )
 
-@pytest.fixture
-def silver_leads_schema():
-    return StructType([
-        StructField("lead_id", IntegerType(), True),
-        StructField("first_name", StringType(), True),
-        StructField("last_name", StringType(), True),
-        StructField("email", StringType(), True),
-        StructField("company", StringType(), True),
-        StructField("status", StringType(), True),
-        StructField("lead_source", StringType(), True),
-        StructField("country", StringType(), True),
-        StructField("created_date", StringType(), True),
-        StructField("updated_date", StringType(), True),
-        StructField("effective_from", TimestampType(), True),
-        StructField("effective_to", TimestampType(), True),
-        StructField("is_current", BooleanType(), True)
-    ])
-
-
 class TestBuildDimLeads:
 
     def test_lead_key_is_added(self, spark, silver_leads_schema):
