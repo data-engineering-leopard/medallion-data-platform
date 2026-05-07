@@ -1,0 +1,38 @@
+name: CD — Deploy to Databricks DEV
+
+"on":
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy Bundle to DEV
+    runs-on: ubuntu-latest
+
+    environment: dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Build Python wheel
+        run: |
+          pip install build
+          python -m build
+
+      - name: Deploy bundle to DEV
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          databricks bundle deploy --target dev
