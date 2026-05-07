@@ -1,6 +1,10 @@
 import pytest
-from my_project.utils.scd2 import apply_scd2
-
+from my_project.utils.scd2 import (
+    apply_scd2,
+    separate_quarantine_records,
+    resolve_effective_from,
+    merge_scd2
+)
 
 # ===========================
 # SESSION FIXTURES
@@ -115,6 +119,365 @@ def multiple_record_result(spark, customer_schema, existing_two_customers):
         scd2_key="id",
         track_columns=["email", "status", "country"]
     )["valid"].cache()
+
+# ===========================
+# UNIT TESTS — separate_quarantine_records
+# ===========================
+
+class TestSeparateQuarantineRecords:
+
+    def test_valid_records_returned_when_updated_date_present(
+        self, spark, customer_schema_with_dates
+    ):
+        """Records with updated_date should be in valid"""
+        df = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK",
+             "2024-01-01", "2024-03-15")
+        ], customer_schema_with_dates)
+
+        result = separate_quarantine_records(
+            df,
+            effective_from_column="updated_date",
+            effective_from_fallback_column="created_date"
+        )
+
+        assert result["valid"].count() == 1
+        assert result["quarantine"].count() == 0
+
+    def test_valid_records_returned_when_only_created_date_present(
+        self, spark, customer_schema_with_dates
+    ):
+        """Records with only created_date should be in valid"""
+        df = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK",
+             "2024-01-01", None)
+        ], customer_schema_with_dates)
+
+        result = separate_quarantine_records(
+            df,
+            effective_from_column="updated_date",
+            effective_from_fallback_column="created_date"
+        )
+
+        assert result["valid"].count() == 1
+        assert result["quarantine"].count() == 0
+
+    def test_records_quarantined_when_both_dates_missing(
+        self, spark, customer_schema_with_dates
+    ):
+        """Records missing both dates should be quarantined"""
+        df = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK", None, None)
+        ], customer_schema_with_dates)
+
+        result = separate_quarantine_records(
+            df,
+            effective_from_column="updated_date",
+            effective_from_fallback_column="created_date"
+        )
+
+        assert result["valid"].count() == 0
+        assert result["quarantine"].count() == 1
+
+    def test_mixed_records_split_correctly(
+        self, spark, customer_schema_with_dates
+    ):
+        """Valid and quarantine records should be split correctly"""
+        df = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK",
+             "2024-01-01", None),
+            (2, "BOB", "bob@email.com", "active", "US", None, None)
+        ], customer_schema_with_dates)
+
+        result = separate_quarantine_records(
+            df,
+            effective_from_column="updated_date",
+            effective_from_fallback_column="created_date"
+        )
+
+        assert result["valid"].count() == 1
+        assert result["quarantine"].count() == 1
+
+    def test_returns_all_records_when_no_date_columns(
+        self, spark, customer_schema
+    ):
+        """When no date columns specified all records should be valid"""
+        df = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK"),
+            (2, "BOB", "bob@email.com", "active", "US")
+        ], customer_schema)
+
+        result = separate_quarantine_records(
+            df,
+            effective_from_column=None,
+            effective_from_fallback_column=None
+        )
+
+        assert result["valid"].count() == 2
+        assert result["quarantine"].count() == 0
+
+
+# ===========================
+# UNIT TESTS — resolve_effective_from
+# ===========================
+
+class TestResolveEffectiveFrom:
+
+    def test_uses_updated_date_when_present(
+        self, spark, customer_schema_with_dates
+    ):
+        """Should use updated_date as effective_from when present"""
+        df = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK",
+             "2024-01-01", "2024-03-15")
+        ], customer_schema_with_dates)
+
+        result = resolve_effective_from(
+            df,
+            effective_from_column="updated_date",
+            effective_from_fallback_column="created_date"
+        )
+
+        row = result.collect()[0]
+        assert str(row["effective_from"]).startswith("2024-03-15")
+
+    def test_falls_back_to_created_date_when_updated_date_null(
+        self, spark, customer_schema_with_dates
+    ):
+        """Should fall back to created_date when updated_date is null"""
+        df = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK",
+             "2024-01-01", None)
+        ], customer_schema_with_dates)
+
+        result = resolve_effective_from(
+            df,
+            effective_from_column="updated_date",
+            effective_from_fallback_column="created_date"
+        )
+
+        row = result.collect()[0]
+        assert str(row["effective_from"]).startswith("2024-01-01")
+
+    def test_uses_hardcoded_ts_when_no_date_columns(
+        self, spark, customer_schema
+    ):
+        """Should use hardcoded timestamp when no date columns specified"""
+        df = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK")
+        ], customer_schema)
+
+        result = resolve_effective_from(
+            df,
+            effective_from_column=None,
+            effective_from_fallback_column=None,
+            effective_from_ts="2024-01-01 00:00:00"
+        )
+
+        row = result.collect()[0]
+        assert str(row["effective_from"]).startswith("2024-01-01")
+
+    def test_adds_effective_from_column(
+        self, spark, customer_schema_with_dates
+    ):
+        """Should add effective_from column to DataFrame"""
+        df = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK",
+             "2024-01-01", None)
+        ], customer_schema_with_dates)
+
+        result = resolve_effective_from(
+            df,
+            effective_from_column="updated_date",
+            effective_from_fallback_column="created_date"
+        )
+
+        assert "effective_from" in result.columns
+
+    def test_adds_effective_to_column(
+        self, spark, customer_schema_with_dates
+    ):
+        """Should add effective_to column set to max date"""
+        df = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK",
+             "2024-01-01", None)
+        ], customer_schema_with_dates)
+
+        result = resolve_effective_from(
+            df,
+            effective_from_column="updated_date",
+            effective_from_fallback_column="created_date"
+        )
+
+        row = result.collect()[0]
+        assert str(row["effective_to"]).startswith("9999")
+
+    def test_adds_is_current_column(
+        self, spark, customer_schema_with_dates
+    ):
+        """Should add is_current column set to True"""
+        df = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK",
+             "2024-01-01", None)
+        ], customer_schema_with_dates)
+
+        result = resolve_effective_from(
+            df,
+            effective_from_column="updated_date",
+            effective_from_fallback_column="created_date"
+        )
+
+        row = result.collect()[0]
+        assert row["is_current"] is True
+
+
+# ===========================
+# UNIT TESTS — merge_scd2
+# ===========================
+
+class TestMergeScd2:
+
+    @pytest.fixture(scope="class")
+    def scd2_schema(self, customer_schema):
+        """Customer schema with SCD2 metadata columns added"""
+        from pyspark.sql.types import TimestampType, BooleanType
+        return StructType(
+            customer_schema.fields + [
+                StructField("effective_from", TimestampType(), True),
+                StructField("effective_to", TimestampType(), True),
+                StructField("is_current", BooleanType(), True)
+            ]
+        )
+
+    def test_new_records_inserted_when_no_existing(
+        self, spark, customer_schema, empty_customer_df
+    ):
+        """New records should be inserted when no existing data"""
+        incoming = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK")
+        ], customer_schema)
+
+        incoming_with_meta = resolve_effective_from(
+            incoming,
+            effective_from_column=None,
+            effective_from_fallback_column=None,
+            effective_from_ts="2024-01-01 00:00:00"
+        )
+
+        result = merge_scd2(
+            incoming_df=incoming_with_meta,
+            existing_df=empty_customer_df,
+            scd2_key="id",
+            track_columns=["email", "status", "country"]
+        )
+
+        assert result.count() == 1
+
+    def test_changed_record_creates_two_versions(
+        self, spark, customer_schema, empty_customer_df
+    ):
+        """A changed record should result in two versions"""
+        initial = spark.createDataFrame([
+            (1, "ALICE", "alice@old.com", "active", "UK")
+        ], customer_schema)
+
+        existing = resolve_effective_from(
+            initial,
+            effective_from_column=None,
+            effective_from_fallback_column=None,
+            effective_from_ts="2024-01-01 00:00:00"
+        )
+
+        incoming = spark.createDataFrame([
+            (1, "ALICE", "alice@new.com", "active", "UK")
+        ], customer_schema)
+
+        incoming_with_meta = resolve_effective_from(
+            incoming,
+            effective_from_column=None,
+            effective_from_fallback_column=None,
+            effective_from_ts="2024-03-15 00:00:00"
+        )
+
+        result = merge_scd2(
+            incoming_df=incoming_with_meta,
+            existing_df=existing,
+            scd2_key="id",
+            track_columns=["email", "status", "country"]
+        )
+
+        assert result.count() == 2
+
+    def test_unchanged_record_not_duplicated(
+        self, spark, customer_schema, empty_customer_df
+    ):
+        """An unchanged record should not be duplicated"""
+        initial = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK")
+        ], customer_schema)
+
+        existing = resolve_effective_from(
+            initial,
+            effective_from_column=None,
+            effective_from_fallback_column=None,
+            effective_from_ts="2024-01-01 00:00:00"
+        )
+
+        incoming = spark.createDataFrame([
+            (1, "ALICE", "alice@email.com", "active", "UK")
+        ], customer_schema)
+
+        incoming_with_meta = resolve_effective_from(
+            incoming,
+            effective_from_column=None,
+            effective_from_fallback_column=None,
+            effective_from_ts="2024-01-01 00:00:00"
+        )
+
+        result = merge_scd2(
+            incoming_df=incoming_with_meta,
+            existing_df=existing,
+            scd2_key="id",
+            track_columns=["email", "status", "country"]
+        )
+
+        assert result.count() == 1
+
+    def test_old_version_closed_on_change(
+        self, spark, customer_schema, empty_customer_df
+    ):
+        """Old version should have is_current=False after a change"""
+        initial = spark.createDataFrame([
+            (1, "ALICE", "alice@old.com", "active", "UK")
+        ], customer_schema)
+
+        existing = resolve_effective_from(
+            initial,
+            effective_from_column=None,
+            effective_from_fallback_column=None,
+            effective_from_ts="2024-01-01 00:00:00"
+        )
+
+        incoming = spark.createDataFrame([
+            (1, "ALICE", "alice@new.com", "active", "UK")
+        ], customer_schema)
+
+        incoming_with_meta = resolve_effective_from(
+            incoming,
+            effective_from_column=None,
+            effective_from_fallback_column=None,
+            effective_from_ts="2024-03-15 00:00:00"
+        )
+
+        result = merge_scd2(
+            incoming_df=incoming_with_meta,
+            existing_df=existing,
+            scd2_key="id",
+            track_columns=["email", "status", "country"]
+        )
+
+        old = result.filter(result["email"] == "alice@old.com").collect()[0]
+        assert old["is_current"] is False
 
 # ===========================
 # NEW RECORDS TESTS
