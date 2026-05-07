@@ -1,9 +1,11 @@
 table: customers
 input_path: data/bronze/customers
 output_path: data/silver/customers
+quarantine_path: quarantine/silver/customers
 scd2: true
 scd2_key: id
-effective_from_ts: "2024-01-01 00:00:00"
+effective_from_column: updated_date
+effective_from_fallback_column: created_date
 scd2_track_columns:
   - email
   - status
