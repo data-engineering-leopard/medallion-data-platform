@@ -1,37 +1,10 @@
 import pytest
-from pyspark.sql.types import (
-    StructType, StructField, StringType, IntegerType
-)
 from my_project.utils.scd2 import apply_scd2
 
 
 # ===========================
 # SESSION FIXTURES
 # ===========================
-
-@pytest.fixture(scope="session")
-def customer_schema():
-    return StructType([
-        StructField("id", IntegerType(), True),
-        StructField("name", StringType(), True),
-        StructField("email", StringType(), True),
-        StructField("status", StringType(), True),
-        StructField("country", StringType(), True)
-    ])
-
-
-@pytest.fixture(scope="session")
-def customer_schema_with_dates():
-    return StructType([
-        StructField("id", IntegerType(), True),
-        StructField("name", StringType(), True),
-        StructField("email", StringType(), True),
-        StructField("status", StringType(), True),
-        StructField("country", StringType(), True),
-        StructField("created_date", StringType(), True),
-        StructField("updated_date", StringType(), True)
-    ])
-
 
 @pytest.fixture(scope="session")
 def empty_customer_df(spark, customer_schema):

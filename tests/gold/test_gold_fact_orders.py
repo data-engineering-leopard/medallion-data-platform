@@ -1,40 +1,8 @@
-import pytest
 import os
-from pyspark.sql.types import (
-    StructType, StructField, StringType, IntegerType,
-    FloatType, LongType, BooleanType, TimestampType
-)
 from my_project.tasks.gold.fact_orders import (
     build_fact_orders,
     run_fact_orders
 )
-
-@pytest.fixture
-def silver_orders_schema():
-    return StructType([
-        StructField("order_id", IntegerType(), True),
-        StructField("customer_id", IntegerType(), True),
-        StructField("product", StringType(), True),
-        StructField("amount", FloatType(), True),
-        StructField("status", StringType(), True),
-        StructField("order_date", StringType(), True)
-    ])
-
-
-@pytest.fixture
-def dim_customers_schema():
-    return StructType([
-        StructField("customer_key", LongType(), True),
-        StructField("customer_id", IntegerType(), True),
-        StructField("name", StringType(), True),
-        StructField("email", StringType(), True),
-        StructField("status", StringType(), True),
-        StructField("country", StringType(), True),
-        StructField("effective_from", TimestampType(), True),
-        StructField("effective_to", TimestampType(), True),
-        StructField("is_current", BooleanType(), True)
-    ])
-
 
 class TestBuildFactOrders:
 

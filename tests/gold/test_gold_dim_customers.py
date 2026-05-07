@@ -1,27 +1,8 @@
-import pytest
 import os
-from pyspark.sql.types import (
-    StructType, StructField, StringType, IntegerType,
-    BooleanType, TimestampType
-)
 from my_project.tasks.gold.dim_customers import (
     build_dim_customers,
     run_dim_customers
 )
-
-@pytest.fixture
-def silver_customers_schema():
-    return StructType([
-        StructField("id", IntegerType(), True),
-        StructField("name", StringType(), True),
-        StructField("email", StringType(), True),
-        StructField("status", StringType(), True),
-        StructField("country", StringType(), True),
-        StructField("effective_from", TimestampType(), True),
-        StructField("effective_to", TimestampType(), True),
-        StructField("is_current", BooleanType(), True)
-    ])
-
 
 class TestBuildDimCustomers:
 

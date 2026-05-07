@@ -1,20 +1,6 @@
-import pytest
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 from my_project.layers.bronze import load_bronze
 from my_project.layers.silver import transform_silver
 from my_project.layers.gold import transform_gold
-
-@pytest.fixture(scope="session")
-def raw_schema():
-    """Schema matching our customers CSV"""
-    return StructType([
-        StructField("id", IntegerType(), True),
-        StructField("name", StringType(), True),
-        StructField("email", StringType(), True),
-        StructField("status", StringType(), True),
-        StructField("country", StringType(), True)
-    ])
-
 
 # ===========================
 # BRONZE TESTS
