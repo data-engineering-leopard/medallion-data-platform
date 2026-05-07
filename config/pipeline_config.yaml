@@ -1,0 +1,16 @@
+paths:
+  raw: data/raw
+  bronze: data/bronze
+  silver: data/silver
+  gold: data/gold
+  quarantine: quarantine/silver
+
+sources:
+  online_tcg:
+    customers: customers.csv
+    orders: orders.csv
+  salesforce:
+    leads: sf_leads.csv
+
+silver:
+  config_path: config/schemas/silver
