@@ -1,4 +1,3 @@
-import logging
 import yaml
 from pyspark.sql.types import (
     StructType, StructField,
@@ -6,6 +5,7 @@ from pyspark.sql.types import (
     BooleanType, LongType, TimestampType, DateType
 )
 from my_project.utils.logger import get_logger
+from my_project.utils.config_models import BronzeSchemaConfig
 
 logger = get_logger(__name__)
 
@@ -24,36 +24,34 @@ TYPE_MAP = {
 def load_schema_from_yaml(yaml_path: str) -> StructType:
     """
     Reads a YAML schema definition and returns a PySpark StructType.
+    Validates the schema using Pydantic before building the StructType.
 
     Raises FileNotFoundError if the YAML file does not exist.
-    Raises ValueError if an unknown type is found in the YAML.
+    Raises ValidationError if the schema is invalid.
     """
     try:
         with open(yaml_path, "r") as f:
-            config = yaml.safe_load(f)
+            raw_config = yaml.safe_load(f)
     except FileNotFoundError:
         raise FileNotFoundError(
             f"Schema YAML not found at path: {yaml_path}"
         )
 
+    # Validate with Pydantic — raises ValidationError if invalid
+    config = BronzeSchemaConfig(**raw_config)
+
     fields = []
-    for field in config["fields"]:
-        field_name = field["name"]
-        field_type = field["type"].lower()
-        nullable = field.get("nullable", True)
-
-        if field_type not in TYPE_MAP:
-            raise ValueError(
-                f"Unknown type '{field_type}' for field '{field_name}'. "
-                f"Supported types are: {list(TYPE_MAP.keys())}"
-            )
-
+    for field in config.fields:
         fields.append(
-            StructField(field_name, TYPE_MAP[field_type], nullable)
+            StructField(
+                field.name,
+                TYPE_MAP[field.type],
+                field.nullable
+            )
         )
 
     logger.info(
-        f"Loaded schema for table '{config.get('table', 'unknown')}' "
+        f"Loaded schema for table '{config.table}' "
         f"with {len(fields)} fields from: {yaml_path}"
     )
 

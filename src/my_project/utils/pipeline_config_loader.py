@@ -1,25 +1,32 @@
-from my_project.utils.logger import get_logger
+import logging
 import yaml
+from my_project.utils.logger import get_logger
+from my_project.utils.config_models import PipelineConfig
 
 logger = get_logger(__name__)
 
 
 def load_pipeline_config(config_path: str) -> dict:
     """
-    Loads the pipeline config from a YAML file.
+    Loads and validates the pipeline config from a YAML file.
+    Uses Pydantic to validate the config structure.
 
-    Returns a dict with paths, sources and silver config.
     Raises FileNotFoundError if the config file does not exist.
+    Raises ValidationError if the config is invalid.
     """
     try:
         with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-            logger.info(f"Loaded pipeline config from: {config_path}")
-            return config
+            raw_config = yaml.safe_load(f)
     except FileNotFoundError:
         raise FileNotFoundError(
             f"Pipeline config not found at: {config_path}"
         )
+
+    # Validate with Pydantic — raises ValidationError if invalid
+    config = PipelineConfig(**raw_config)
+    logger.info(f"Loaded and validated pipeline config from: {config_path}")
+
+    return config.model_dump()
 
 
 def get_path(config: dict, *keys: str) -> str:

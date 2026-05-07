@@ -22,12 +22,15 @@ def load_silver_config(config_path: str) -> list:
             f"No YAML config files found in: {config_path}"
         )
 
+    from my_project.utils.config_models import SilverTableConfig
     configs = []
     for yaml_file in yaml_files:
         with open(yaml_file, "r") as f:
-            config = yaml.safe_load(f)
-            configs.append(config)
-            logger.info(f"Loaded silver config: {yaml_file}")
+            raw_config = yaml.safe_load(f)
+            # Validate with Pydantic — raises ValidationError if invalid
+            config = SilverTableConfig(**raw_config)
+            configs.append(config.model_dump())
+            logger.info(f"Loaded and validated silver config: {yaml_file}")
 
     return configs
 
