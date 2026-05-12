@@ -1,17 +1,16 @@
-name: CI — Run Tests
+name: CD — Deploy to Databricks DEV
 
 "on":
   push:
     branches:
-      - '**'
-  pull_request:
-    branches:
       - main
 
 jobs:
-  test:
-    name: Run pytest
+  deploy:
+    name: Deploy Bundle to DEV
     runs-on: ubuntu-latest
+
+    environment: dev
 
     steps:
       - name: Checkout code
@@ -22,26 +21,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Install dependencies
+      - name: Install Databricks CLI
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 
-      - name: Run tests
+      - name: Build Python wheel
         run: |
-          pytest tests/ -v --tb=short
+          pip install build
+          python -m build
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: |
-            .pytest_cache/
-          retention-days: 7
+      - name: Deploy bundle to DEV
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          databricks bundle deploy --target dev
