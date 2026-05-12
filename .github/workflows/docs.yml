@@ -1,0 +1,30 @@
+name: Deploy Documentation
+
+"on":
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy MkDocs to GitHub Pages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install MkDocs dependencies
+        run: |
+          pip install mkdocs mkdocs-material mkdocstrings mkdocstrings-python
+
+      - name: Deploy to GitHub Pages
+        run: |
+          mkdocs gh-deploy --force

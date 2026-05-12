@@ -1,0 +1,61 @@
+site_name: My PySpark Project
+site_description: A production grade medallion architecture built with PySpark
+site_author: data-engineering-leopard
+site_url: https://data-engineering-leopard.github.io/my-pyspark-project
+
+repo_name: data-engineering-leopard/my-pyspark-project
+repo_url: https://github.com/data-engineering-leopard/my-pyspark-project
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Layers:
+    - Bronze: bronze.md
+    - Silver: silver.md
+    - Gold: gold.md
+  - API Reference: api.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
