@@ -1,9 +1,18 @@
 name: CD — Deploy to Databricks DEV
 
+# This workflow is currently disabled pending Databricks workspace setup.
+# To enable, uncomment the "on" trigger below and configure:
+# 1. DATABRICKS_HOST secret in GitHub — your workspace URL
+# 2. DATABRICKS_TOKEN secret in GitHub — your personal access token
+# 3. Update databricks.yml with correct workspace host
+
+# "on":
+#   push:
+#     branches:
+#       - main
+
 "on":
-  push:
-    branches:
-      - main
+  workflow_dispatch:    # Manual trigger only — run from GitHub Actions UI
 
 jobs:
   deploy:
