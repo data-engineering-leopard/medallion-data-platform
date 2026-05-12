@@ -21,7 +21,7 @@ targets:
   dev:
     mode: development
     workspace:
-      host: ${var.databricks_host}
+      host: https://placeholder.azuredatabricks.net
     variables:
       bronze_path: /mnt/dev/bronze
       silver_path: /mnt/dev/silver
