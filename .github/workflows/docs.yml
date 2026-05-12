@@ -5,6 +5,9 @@ name: Deploy Documentation
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     name: Deploy MkDocs to GitHub Pages
@@ -24,6 +27,11 @@ jobs:
       - name: Install MkDocs dependencies
         run: |
           pip install mkdocs mkdocs-material mkdocstrings mkdocstrings-python
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Deploy to GitHub Pages
         run: |
