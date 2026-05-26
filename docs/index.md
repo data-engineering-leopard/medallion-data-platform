@@ -30,7 +30,7 @@ This project ingests data from multiple source systems, cleans and validates it 
 
 ```bash
 git clone https://github.com/data-engineering-leopard/my-pyspark-project.git
-cd my-pyspark-project
+cd medallion-data-platform
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
