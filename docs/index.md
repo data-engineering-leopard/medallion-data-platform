@@ -29,7 +29,7 @@ This project ingests data from multiple source systems, cleans and validates it 
 ### Installation
 
 ```bash
-git clone https://github.com/data-engineering-leopard/my-pyspark-project.git
+git clone https://github.com/data-engineering-leopard/medallion-data-platform.git
 cd medallion-data-platform
 python -m venv .venv
 source .venv/bin/activate
