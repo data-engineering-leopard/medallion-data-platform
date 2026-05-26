@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://data-engineering-leopard.github.io/my-pyspark-project/</loc>
-         <lastmod>2026-05-12</lastmod>
+         <loc>https://data-engineering-leopard.github.io/medallion-data-platform/</loc>
+         <lastmod>2026-05-26</lastmod>
     </url>
     <url>
-         <loc>https://data-engineering-leopard.github.io/my-pyspark-project/api/</loc>
-         <lastmod>2026-05-12</lastmod>
+         <loc>https://data-engineering-leopard.github.io/medallion-data-platform/api/</loc>
+         <lastmod>2026-05-26</lastmod>
     </url>
     <url>
-         <loc>https://data-engineering-leopard.github.io/my-pyspark-project/architecture/</loc>
-         <lastmod>2026-05-12</lastmod>
+         <loc>https://data-engineering-leopard.github.io/medallion-data-platform/architecture/</loc>
+         <lastmod>2026-05-26</lastmod>
     </url>
     <url>
-         <loc>https://data-engineering-leopard.github.io/my-pyspark-project/bronze/</loc>
-         <lastmod>2026-05-12</lastmod>
+         <loc>https://data-engineering-leopard.github.io/medallion-data-platform/bronze/</loc>
+         <lastmod>2026-05-26</lastmod>
     </url>
     <url>
-         <loc>https://data-engineering-leopard.github.io/my-pyspark-project/gold/</loc>
-         <lastmod>2026-05-12</lastmod>
+         <loc>https://data-engineering-leopard.github.io/medallion-data-platform/gold/</loc>
+         <lastmod>2026-05-26</lastmod>
     </url>
     <url>
-         <loc>https://data-engineering-leopard.github.io/my-pyspark-project/silver/</loc>
-         <lastmod>2026-05-12</lastmod>
+         <loc>https://data-engineering-leopard.github.io/medallion-data-platform/silver/</loc>
+         <lastmod>2026-05-26</lastmod>
     </url>
 </urlset>
