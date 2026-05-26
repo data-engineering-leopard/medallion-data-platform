@@ -1,10 +1,10 @@
 site_name: My PySpark Project
 site_description: A production grade medallion architecture built with PySpark
 site_author: data-engineering-leopard
-site_url: https://data-engineering-leopard.github.io/my-pyspark-project
+site_url: https://data-engineering-leopard.github.io/medallion-data-platform
 
-repo_name: data-engineering-leopard/my-pyspark-project
-repo_url: https://github.com/data-engineering-leopard/my-pyspark-project
+repo_name: data-engineering-leopard/medallion-data-platform
+repo_url: https://github.com/data-engineering-leopard/medallion-data-platform
 
 theme:
   name: material
