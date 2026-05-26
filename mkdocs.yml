@@ -1,4 +1,4 @@
-site_name: My PySpark Project
+site_name: Medallion Data Platform
 site_description: A production grade medallion architecture built with PySpark
 site_author: data-engineering-leopard
 site_url: https://data-engineering-leopard.github.io/medallion-data-platform
