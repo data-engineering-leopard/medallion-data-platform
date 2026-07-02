@@ -2,26 +2,26 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://data-engineering-leopard.github.io/medallion-data-platform/</loc>
-         <lastmod>2026-05-26</lastmod>
+         <lastmod>2026-07-02</lastmod>
     </url>
     <url>
          <loc>https://data-engineering-leopard.github.io/medallion-data-platform/api/</loc>
-         <lastmod>2026-05-26</lastmod>
+         <lastmod>2026-07-02</lastmod>
     </url>
     <url>
          <loc>https://data-engineering-leopard.github.io/medallion-data-platform/architecture/</loc>
-         <lastmod>2026-05-26</lastmod>
+         <lastmod>2026-07-02</lastmod>
     </url>
     <url>
          <loc>https://data-engineering-leopard.github.io/medallion-data-platform/bronze/</loc>
-         <lastmod>2026-05-26</lastmod>
+         <lastmod>2026-07-02</lastmod>
     </url>
     <url>
          <loc>https://data-engineering-leopard.github.io/medallion-data-platform/gold/</loc>
-         <lastmod>2026-05-26</lastmod>
+         <lastmod>2026-07-02</lastmod>
     </url>
     <url>
          <loc>https://data-engineering-leopard.github.io/medallion-data-platform/silver/</loc>
-         <lastmod>2026-05-26</lastmod>
+         <lastmod>2026-07-02</lastmod>
     </url>
 </urlset>
