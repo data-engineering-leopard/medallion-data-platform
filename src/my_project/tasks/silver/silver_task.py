@@ -176,7 +176,11 @@ def main():
 
     import argparse
     parser = argparse.ArgumentParser(description="Silver task")
-    parser.add_argument("--config-path", required=True)
+    parser.add_argument(
+        "--config-path",
+        default=os.getenv("SILVER_CONFIG_PATH", "assets/silver"),
+        help="Path to silver config YAML files"
+    )
     args = parser.parse_args()
 
     spark = SparkSession.builder \
@@ -187,6 +191,10 @@ def main():
         spark,
         config_path=args.config_path
     )
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":

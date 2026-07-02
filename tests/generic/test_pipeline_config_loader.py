@@ -71,4 +71,4 @@ class TestGetPath:
         """Should retrieve silver config path"""
         config = load_pipeline_config("config/pipeline_config.yaml")
         result = get_path(config, "silver", "config_path")
-        assert result == "config/schemas/silver"
+        assert result == "assets/silver"
