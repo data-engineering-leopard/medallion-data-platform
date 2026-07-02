@@ -18,11 +18,10 @@ def load_silver_config(config_path: str) -> list:
     yaml_files = glob.glob(f"{config_path}/*.yaml")
 
     if not yaml_files:
-        raise FileNotFoundError(
-            f"No YAML config files found in: {config_path}"
-        )
+        raise FileNotFoundError(f"No YAML config files found in: {config_path}")
 
     from my_project.utils.config_models import SilverTableConfig
+
     configs = []
     for yaml_file in yaml_files:
         with open(yaml_file, "r") as f:
@@ -58,11 +57,12 @@ def apply_cleaning_rules(df: DataFrame, config: dict) -> DataFrame:
 
     return df
 
+
 def run_silver_table(
     spark: SparkSession,
     config: dict,
     bronze_base_path: str = None,
-    silver_base_path: str = None
+    silver_base_path: str = None,
 ) -> None:
     """
     Runs the silver transformation for a single table.
@@ -96,9 +96,7 @@ def run_silver_table(
 
         # Load existing silver data if it exists
         parquet_files = glob.glob(f"{output_path}/*.parquet")
-        has_existing_data = (
-            os.path.exists(output_path) and len(parquet_files) > 0
-        )
+        has_existing_data = os.path.exists(output_path) and len(parquet_files) > 0
 
         if has_existing_data:
             existing_df = spark.read.parquet(output_path)
@@ -114,13 +112,11 @@ def run_silver_table(
             existing_df=existing_df,
             scd2_key=config["scd2_key"],
             track_columns=config["scd2_track_columns"],
-            effective_from_column=config.get(
-                "effective_from_column", None
-            ),
+            effective_from_column=config.get("effective_from_column", None),
             effective_from_fallback_column=config.get(
                 "effective_from_fallback_column", None
             ),
-            effective_from_ts=config.get("effective_from_ts", None)
+            effective_from_ts=config.get("effective_from_ts", None),
         )
 
         # Apply cleaning rules to valid records after SCD2
@@ -143,11 +139,12 @@ def run_silver_table(
     result_df.write.mode("overwrite").parquet(output_path)
     logger.info(f"Written silver to: {output_path}")
 
+
 def run_silver(
     spark: SparkSession,
     config_path: str,
     bronze_base_path: str = None,
-    silver_base_path: str = None
+    silver_base_path: str = None,
 ) -> None:
     """
     Runs the full silver task for all tables defined in config.
@@ -162,35 +159,30 @@ def run_silver(
             spark=spark,
             config=config,
             bronze_base_path=bronze_base_path,
-            silver_base_path=silver_base_path
+            silver_base_path=silver_base_path,
         )
 
-    logger.info(
-        f"Silver task complete — "
-        f"{len(configs)} tables processed"
-    )
+    logger.info(f"Silver task complete — " f"{len(configs)} tables processed")
+
 
 def main():
     from my_project.utils.logger import setup_logging
+
     setup_logging()
 
     import argparse
+
     parser = argparse.ArgumentParser(description="Silver task")
     parser.add_argument(
         "--config-path",
         default=os.getenv("SILVER_CONFIG_PATH", "assets/silver"),
-        help="Path to silver config YAML files"
+        help="Path to silver config YAML files",
     )
     args = parser.parse_args()
 
-    spark = SparkSession.builder \
-        .appName("silver_task") \
-        .getOrCreate()
+    spark = SparkSession.builder.appName("silver_task").getOrCreate()
 
-    run_silver(
-        spark,
-        config_path=args.config_path
-    )
+    run_silver(spark, config_path=args.config_path)
 
 
 if __name__ == "__main__":

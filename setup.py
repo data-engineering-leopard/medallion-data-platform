@@ -5,10 +5,7 @@ setup(
     version="0.1.0",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
-    install_requires=[
-        "pyspark>=3.5.0",
-        "pyyaml>=6.0"
-    ],
+    install_requires=["pyspark>=3.5.0", "pyyaml>=6.0"],
     python_requires=">=3.11",
     entry_points={
         "console_scripts": [
@@ -19,5 +16,5 @@ setup(
             "fact_orders=my_project.tasks.gold.fact_orders:main",
             "dim_leads=my_project.tasks.gold.dim_leads:main",
         ]
-    }
+    },
 )

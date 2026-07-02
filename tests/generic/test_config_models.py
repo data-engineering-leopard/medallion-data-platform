@@ -8,7 +8,7 @@ from my_project.utils.config_models import (
     PipelinePathsConfig,
     PipelineSourcesConfig,
     PipelineSilverConfig,
-    PipelineConfig
+    PipelineConfig,
 )
 
 
@@ -16,15 +16,12 @@ from my_project.utils.config_models import (
 # BRONZE SCHEMA CONFIG TESTS
 # ===========================
 
+
 class TestBronzeFieldConfig:
 
     def test_valid_field_config(self):
         """Should create valid field config"""
-        field = BronzeFieldConfig(
-            name="id",
-            type="integer",
-            nullable=True
-        )
+        field = BronzeFieldConfig(name="id", type="integer", nullable=True)
         assert field.name == "id"
         assert field.type == "integer"
         assert field.nullable is True
@@ -53,8 +50,8 @@ class TestBronzeSchemaConfig:
             table="customers",
             fields=[
                 BronzeFieldConfig(name="id", type="integer"),
-                BronzeFieldConfig(name="name", type="string")
-            ]
+                BronzeFieldConfig(name="name", type="string"),
+            ],
         )
         assert config.table == "customers"
         assert len(config.fields) == 2
@@ -67,14 +64,13 @@ class TestBronzeSchemaConfig:
     def test_missing_table_raises_error(self):
         """Missing table name should raise ValidationError"""
         with pytest.raises(ValidationError):
-            BronzeSchemaConfig(
-                fields=[BronzeFieldConfig(name="id", type="integer")]
-            )
+            BronzeSchemaConfig(fields=[BronzeFieldConfig(name="id", type="integer")])
 
 
 # ===========================
 # SILVER TABLE CONFIG TESTS
 # ===========================
+
 
 class TestSilverTableConfig:
 
@@ -84,7 +80,7 @@ class TestSilverTableConfig:
             table="orders",
             input_path="data/bronze/orders",
             output_path="data/silver/orders",
-            scd2=False
+            scd2=False,
         )
         assert config.table == "orders"
         assert config.scd2 is False
@@ -97,7 +93,7 @@ class TestSilverTableConfig:
             output_path="data/silver/customers",
             scd2=True,
             scd2_key="id",
-            scd2_track_columns=["email", "status"]
+            scd2_track_columns=["email", "status"],
         )
         assert config.scd2 is True
         assert config.scd2_key == "id"
@@ -110,7 +106,7 @@ class TestSilverTableConfig:
                 input_path="data/bronze/customers",
                 output_path="data/silver/customers",
                 scd2=True,
-                scd2_track_columns=["email"]
+                scd2_track_columns=["email"],
             )
 
     def test_scd2_without_track_columns_raises_error(self):
@@ -121,7 +117,7 @@ class TestSilverTableConfig:
                 input_path="data/bronze/customers",
                 output_path="data/silver/customers",
                 scd2=True,
-                scd2_key="id"
+                scd2_key="id",
             )
 
     def test_drop_null_columns_defaults_to_empty(self):
@@ -130,7 +126,7 @@ class TestSilverTableConfig:
             table="orders",
             input_path="data/bronze/orders",
             output_path="data/silver/orders",
-            scd2=False
+            scd2=False,
         )
         assert config.drop_null_columns == []
 
@@ -138,15 +134,14 @@ class TestSilverTableConfig:
         """Missing input_path should raise ValidationError"""
         with pytest.raises(ValidationError):
             SilverTableConfig(
-                table="orders",
-                output_path="data/silver/orders",
-                scd2=False
+                table="orders", output_path="data/silver/orders", scd2=False
             )
 
 
 # ===========================
 # GOLD TABLE CONFIG TESTS
 # ===========================
+
 
 class TestGoldTableConfig:
 
@@ -158,8 +153,8 @@ class TestGoldTableConfig:
             output_path="data/gold/dim_customers",
             fields=[
                 BronzeFieldConfig(name="customer_key", type="long"),
-                BronzeFieldConfig(name="customer_id", type="integer")
-            ]
+                BronzeFieldConfig(name="customer_id", type="integer"),
+            ],
         )
         assert config.table == "dim_customers"
         assert len(config.fields) == 2
@@ -170,15 +165,14 @@ class TestGoldTableConfig:
             GoldTableConfig(
                 table="dim_customers",
                 input_path="data/silver/customers",
-                fields=[
-                    BronzeFieldConfig(name="id", type="integer")
-                ]
+                fields=[BronzeFieldConfig(name="id", type="integer")],
             )
 
 
 # ===========================
 # PIPELINE CONFIG TESTS
 # ===========================
+
 
 class TestPipelineConfig:
 
@@ -190,16 +184,13 @@ class TestPipelineConfig:
                 bronze="data/bronze",
                 silver="data/silver",
                 gold="data/gold",
-                quarantine="quarantine/silver"
+                quarantine="quarantine/silver",
             ),
             sources=PipelineSourcesConfig(
-                online_tcg={"customers": "customers.csv",
-                            "orders": "orders.csv"},
-                salesforce={"leads": "sf_leads.csv"}
+                online_tcg={"customers": "customers.csv", "orders": "orders.csv"},
+                salesforce={"leads": "sf_leads.csv"},
             ),
-            silver=PipelineSilverConfig(
-                config_path="config/schemas/silver"
-            )
+            silver=PipelineSilverConfig(config_path="config/schemas/silver"),
         )
         assert config.paths.raw == "data/raw"
         assert config.paths.bronze == "data/bronze"
@@ -210,11 +201,9 @@ class TestPipelineConfig:
             PipelineConfig(
                 sources=PipelineSourcesConfig(
                     online_tcg={"customers": "customers.csv"},
-                    salesforce={"leads": "sf_leads.csv"}
+                    salesforce={"leads": "sf_leads.csv"},
                 ),
-                silver=PipelineSilverConfig(
-                    config_path="config/schemas/silver"
-                )
+                silver=PipelineSilverConfig(config_path="config/schemas/silver"),
             )
 
     def test_missing_raw_path_raises_error(self):
@@ -224,5 +213,5 @@ class TestPipelineConfig:
                 bronze="data/bronze",
                 silver="data/silver",
                 gold="data/gold",
-                quarantine="quarantine/silver"
+                quarantine="quarantine/silver",
             )

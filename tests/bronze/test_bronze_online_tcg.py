@@ -6,13 +6,14 @@ from my_project.tasks.bronze.bronze_online_tcg import (
     load_orders,
     get_customers_schema,
     get_orders_schema,
-    run_bronze
+    run_bronze,
 )
 
 
 # ===========================
 # SESSION FIXTURES
 # ===========================
+
 
 @pytest.fixture(scope="session")
 def customers_df(spark):
@@ -42,6 +43,7 @@ def orders_data(orders_df):
 # CUSTOMERS SCHEMA TESTS
 # ===========================
 
+
 class TestCustomersSchema:
 
     def test_customers_schema_loaded_from_yaml(self):
@@ -66,6 +68,7 @@ class TestCustomersSchema:
 # CUSTOMERS LOADING TESTS
 # ===========================
 
+
 class TestLoadCustomers:
 
     def test_customers_loads_all_rows(self, customers_df):
@@ -84,9 +87,7 @@ class TestLoadCustomers:
 
     def test_customers_preserves_nulls(self, customers_df):
         """Bronze should NOT remove null values"""
-        null_names = customers_df.filter(
-            customers_df["name"].isNull()
-        ).count()
+        null_names = customers_df.filter(customers_df["name"].isNull()).count()
         assert null_names > 0
 
     def test_customers_preserves_mixed_case(self, customers_data):
@@ -102,6 +103,7 @@ class TestLoadCustomers:
 # ===========================
 # ORDERS SCHEMA TESTS
 # ===========================
+
 
 class TestOrdersSchema:
 
@@ -126,6 +128,7 @@ class TestOrdersSchema:
 # ORDERS LOADING TESTS
 # ===========================
 
+
 class TestLoadOrders:
 
     def test_orders_loads_all_rows(self, orders_df):
@@ -143,16 +146,12 @@ class TestLoadOrders:
 
     def test_orders_preserves_nulls(self, orders_df):
         """Bronze should NOT remove null values"""
-        null_dates = orders_df.filter(
-            orders_df["order_date"].isNull()
-        ).count()
+        null_dates = orders_df.filter(orders_df["order_date"].isNull()).count()
         assert null_dates > 0
 
     def test_orders_preserves_missing_customer_ids(self, orders_df):
         """Bronze should keep rows with missing customer IDs"""
-        null_customers = orders_df.filter(
-            orders_df["customer_id"].isNull()
-        ).count()
+        null_customers = orders_df.filter(orders_df["customer_id"].isNull()).count()
         assert null_customers > 0
 
     def test_orders_enforces_schema(self, orders_df):
@@ -164,6 +163,7 @@ class TestLoadOrders:
 # BRONZE TASK RUN TESTS
 # ===========================
 
+
 class TestRunBronze:
 
     @pytest.fixture(scope="class")
@@ -174,7 +174,7 @@ class TestRunBronze:
             spark,
             customers_input="data/raw/customers.csv",
             orders_input="data/raw/orders.csv",
-            output_path=output_path
+            output_path=output_path,
         )
         return output_path
 
@@ -186,9 +186,7 @@ class TestRunBronze:
         """run_bronze should write orders parquet to output path"""
         assert os.path.exists(f"{bronze_output}/orders")
 
-    def test_run_bronze_customers_output_readable(
-        self, spark, bronze_output
-    ):
+    def test_run_bronze_customers_output_readable(self, spark, bronze_output):
         """Written customers parquet should be readable"""
         df = spark.read.parquet(f"{bronze_output}/customers")
         assert df.count() == 8

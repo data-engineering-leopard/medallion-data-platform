@@ -1,7 +1,6 @@
-import logging
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
-from pyspark.sql.types import BooleanType, StructType, StructField, TimestampType
+from pyspark.sql.types import BooleanType
 from my_project.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -10,9 +9,7 @@ MAX_DATE = "9999-12-31 00:00:00"
 
 
 def separate_quarantine_records(
-    df: DataFrame,
-    effective_from_column: str,
-    effective_from_fallback_column: str
+    df: DataFrame, effective_from_column: str, effective_from_fallback_column: str
 ) -> dict:
     """
     Separates incoming records into valid and quarantine.
@@ -26,12 +23,12 @@ def separate_quarantine_records(
     """
     if effective_from_column and effective_from_fallback_column:
         quarantine_df = df.filter(
-            F.col(effective_from_column).isNull() &
-            F.col(effective_from_fallback_column).isNull()
+            F.col(effective_from_column).isNull()
+            & F.col(effective_from_fallback_column).isNull()
         )
         valid_df = df.filter(
-            F.col(effective_from_column).isNotNull() |
-            F.col(effective_from_fallback_column).isNotNull()
+            F.col(effective_from_column).isNotNull()
+            | F.col(effective_from_fallback_column).isNotNull()
         )
 
         if quarantine_df.count() > 0:
@@ -43,17 +40,14 @@ def separate_quarantine_records(
         quarantine_df = df.filter(F.lit(False))
         valid_df = df
 
-    return {
-        "valid": valid_df,
-        "quarantine": quarantine_df
-    }
+    return {"valid": valid_df, "quarantine": quarantine_df}
 
 
 def resolve_effective_from(
     df: DataFrame,
     effective_from_column: str = None,
     effective_from_fallback_column: str = None,
-    effective_from_ts: str = None
+    effective_from_ts: str = None,
 ) -> DataFrame:
     """
     Adds SCD2 metadata columns to a DataFrame.
@@ -73,7 +67,7 @@ def resolve_effective_from(
     if effective_from_column and effective_from_fallback_column:
         effective_from = F.coalesce(
             F.to_timestamp(F.col(effective_from_column)),
-            F.to_timestamp(F.col(effective_from_fallback_column))
+            F.to_timestamp(F.col(effective_from_fallback_column)),
         )
     elif effective_from_ts:
         effective_from = F.to_timestamp(F.lit(effective_from_ts))
@@ -81,18 +75,14 @@ def resolve_effective_from(
         effective_from = F.current_timestamp()
 
     return (
-        df
-        .withColumn("effective_from", effective_from)
+        df.withColumn("effective_from", effective_from)
         .withColumn("effective_to", F.to_timestamp(F.lit(MAX_DATE)))
         .withColumn("is_current", F.lit(True).cast(BooleanType()))
     )
 
 
 def merge_scd2(
-    incoming_df: DataFrame,
-    existing_df: DataFrame,
-    scd2_key: str,
-    track_columns: list
+    incoming_df: DataFrame, existing_df: DataFrame, scd2_key: str, track_columns: list
 ) -> DataFrame:
     """
     Performs the core SCD2 merge between incoming and existing data.
@@ -110,8 +100,7 @@ def merge_scd2(
     # Handle empty existing table
     if existing_df.count() == 0:
         logger.info(
-            f"No existing data — inserting "
-            f"{incoming_df.count()} new records"
+            f"No existing data — inserting " f"{incoming_df.count()} new records"
         )
         return incoming_df
 
@@ -121,15 +110,11 @@ def merge_scd2(
     # Build condition to detect changes in any tracked column
     change_condition = None
     for col in track_columns:
-        condition = (
-            F.col(f"incoming.{col}") != F.col(f"existing.{col}")
-        ) | (
-            F.col(f"incoming.{col}").isNull() !=
-            F.col(f"existing.{col}").isNull()
+        condition = (F.col(f"incoming.{col}") != F.col(f"existing.{col}")) | (
+            F.col(f"incoming.{col}").isNull() != F.col(f"existing.{col}").isNull()
         )
         change_condition = (
-            condition if change_condition is None
-            else change_condition | condition
+            condition if change_condition is None else change_condition | condition
         )
 
     incoming_aliased = incoming_df.alias("incoming")
@@ -138,40 +123,36 @@ def merge_scd2(
     joined = incoming_aliased.join(
         existing_aliased,
         on=F.col(f"incoming.{scd2_key}") == F.col(f"existing.{scd2_key}"),
-        how="left"
+        how="left",
     )
 
     # Records where tracked columns have changed
     changed = joined.filter(change_condition).select("incoming.*")
 
     # Brand new records with no match in existing
-    new_records = joined.filter(
-        F.col(f"existing.{scd2_key}").isNull()
-    ).select("incoming.*")
+    new_records = joined.filter(F.col(f"existing.{scd2_key}").isNull()).select(
+        "incoming.*"
+    )
 
     # Records where nothing changed — keep existing version
-    unchanged_keys = joined.filter(
-        ~change_condition
-    ).select(F.col(f"incoming.{scd2_key}").alias(scd2_key))
+    unchanged_keys = joined.filter(~change_condition).select(
+        F.col(f"incoming.{scd2_key}").alias(scd2_key)
+    )
 
     # Close old versions of changed records
     changed_keys = changed.select(scd2_key)
     closed_records = (
-        current_existing
-        .join(changed_keys, on=scd2_key, how="inner")
+        current_existing.join(changed_keys, on=scd2_key, how="inner")
         .withColumn("effective_to", F.current_timestamp())
         .withColumn("is_current", F.lit(False).cast(BooleanType()))
     )
 
     # Assemble final result
     historical = existing_df.filter(F.col("is_current") == False)
-    unchanged_existing = current_existing.join(
-        unchanged_keys, on=scd2_key, how="inner"
-    )
+    unchanged_existing = current_existing.join(unchanged_keys, on=scd2_key, how="inner")
 
     result = (
-        historical
-        .unionByName(closed_records)
+        historical.unionByName(closed_records)
         .unionByName(changed)
         .unionByName(new_records)
         .unionByName(unchanged_existing)
@@ -195,7 +176,7 @@ def apply_scd2(
     track_columns: list,
     effective_from_ts: str = None,
     effective_from_column: str = None,
-    effective_from_fallback_column: str = None
+    effective_from_fallback_column: str = None,
 ) -> dict:
     """
     Orchestrates the full SCD2 process.
@@ -213,7 +194,7 @@ def apply_scd2(
     separated = separate_quarantine_records(
         df=incoming_df,
         effective_from_column=effective_from_column,
-        effective_from_fallback_column=effective_from_fallback_column
+        effective_from_fallback_column=effective_from_fallback_column,
     )
 
     valid_incoming = separated["valid"]
@@ -224,7 +205,7 @@ def apply_scd2(
         df=valid_incoming,
         effective_from_column=effective_from_column,
         effective_from_fallback_column=effective_from_fallback_column,
-        effective_from_ts=effective_from_ts
+        effective_from_ts=effective_from_ts,
     )
 
     # Step 3 — merge with existing data
@@ -232,10 +213,7 @@ def apply_scd2(
         incoming_df=incoming_with_meta,
         existing_df=existing_df,
         scd2_key=scd2_key,
-        track_columns=track_columns
+        track_columns=track_columns,
     )
 
-    return {
-        "valid": valid_result,
-        "quarantine": quarantine_df
-    }
+    return {"valid": valid_result, "quarantine": quarantine_df}

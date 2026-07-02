@@ -16,10 +16,7 @@ def setup_logging(level: int = LOG_LEVEL) -> None:
     In Databricks, logging is handled by the platform
     so this only applies when running locally.
     """
-    logging.basicConfig(
-        level=level,
-        format=LOG_FORMAT
-    )
+    logging.basicConfig(level=level, format=LOG_FORMAT)
 
 
 def get_logger(name: str) -> logging.Logger:

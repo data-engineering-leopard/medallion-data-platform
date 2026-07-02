@@ -14,6 +14,7 @@ ORDERS_SCHEMA_PATH = "config/schemas/bronze/online_tcg_orders.yaml"
 # SCHEMAS
 # ===========================
 
+
 def get_customers_schema() -> StructType:
     """Loads the customers schema from YAML config"""
     return load_schema_from_yaml(CUSTOMERS_SCHEMA_PATH)
@@ -28,6 +29,7 @@ def get_orders_schema() -> StructType:
 # LOADERS
 # ===========================
 
+
 def load_customers(spark: SparkSession, file_path: str) -> DataFrame:
     """
     Loads raw customers data from Online TCG source.
@@ -39,9 +41,7 @@ def load_customers(spark: SparkSession, file_path: str) -> DataFrame:
     result = validate_schema(df, schema)
 
     if not result["is_valid"]:
-        logger.warning(
-            f"Customers schema drift detected: {result}"
-        )
+        logger.warning(f"Customers schema drift detected: {result}")
 
     return df
 
@@ -57,9 +57,7 @@ def load_orders(spark: SparkSession, file_path: str) -> DataFrame:
     result = validate_schema(df, schema)
 
     if not result["is_valid"]:
-        logger.warning(
-            f"Orders schema drift detected: {result}"
-        )
+        logger.warning(f"Orders schema drift detected: {result}")
 
     return df
 
@@ -68,11 +66,9 @@ def load_orders(spark: SparkSession, file_path: str) -> DataFrame:
 # TASK ENTRY POINT
 # ===========================
 
+
 def run_bronze(
-    spark: SparkSession,
-    customers_input: str,
-    orders_input: str,
-    output_path: str
+    spark: SparkSession, customers_input: str, orders_input: str, output_path: str
 ) -> None:
     """
     Runs the full bronze task for Online TCG source system.
@@ -86,16 +82,12 @@ def run_bronze(
 
     customers_df = load_customers(spark, customers_input)
     logger.info(f"Loaded {customers_df.count()} customer rows")
-    customers_df.write.mode("overwrite").parquet(
-        f"{output_path}/customers"
-    )
+    customers_df.write.mode("overwrite").parquet(f"{output_path}/customers")
     logger.info(f"Written customers to {output_path}/customers")
 
     orders_df = load_orders(spark, orders_input)
     logger.info(f"Loaded {orders_df.count()} order rows")
-    orders_df.write.mode("overwrite").parquet(
-        f"{output_path}/orders"
-    )
+    orders_df.write.mode("overwrite").parquet(f"{output_path}/orders")
     logger.info(f"Written orders to {output_path}/orders")
 
     logger.info("Bronze task for Online TCG complete")
@@ -103,24 +95,24 @@ def run_bronze(
 
 def main():
     from my_project.utils.logger import setup_logging
+
     setup_logging()
 
     import argparse
+
     parser = argparse.ArgumentParser(description="Bronze Online TCG task")
     parser.add_argument("--customers-input", required=True)
     parser.add_argument("--orders-input", required=True)
     parser.add_argument("--output-path", required=True)
     args = parser.parse_args()
 
-    spark = SparkSession.builder \
-        .appName("bronze_online_tcg") \
-        .getOrCreate()
+    spark = SparkSession.builder.appName("bronze_online_tcg").getOrCreate()
 
     run_bronze(
         spark,
         customers_input=args.customers_input,
         orders_input=args.orders_input,
-        output_path=args.output_path
+        output_path=args.output_path,
     )
 
 

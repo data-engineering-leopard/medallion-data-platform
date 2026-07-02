@@ -1,4 +1,3 @@
-import logging
 import yaml
 from my_project.utils.logger import get_logger
 from my_project.utils.config_models import PipelineConfig
@@ -18,9 +17,7 @@ def load_pipeline_config(config_path: str) -> dict:
         with open(config_path, "r") as f:
             raw_config = yaml.safe_load(f)
     except FileNotFoundError:
-        raise FileNotFoundError(
-            f"Pipeline config not found at: {config_path}"
-        )
+        raise FileNotFoundError(f"Pipeline config not found at: {config_path}")
 
     # Validate with Pydantic — raises ValidationError if invalid
     config = PipelineConfig(**raw_config)

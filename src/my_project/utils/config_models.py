@@ -5,8 +5,14 @@ from my_project.utils.logger import get_logger
 logger = get_logger(__name__)
 
 VALID_FIELD_TYPES = [
-    "string", "integer", "float", "double",
-    "boolean", "long", "timestamp", "date"
+    "string",
+    "integer",
+    "float",
+    "double",
+    "boolean",
+    "long",
+    "timestamp",
+    "date",
 ]
 
 
@@ -14,8 +20,10 @@ VALID_FIELD_TYPES = [
 # BRONZE MODELS
 # ===========================
 
+
 class BronzeFieldConfig(BaseModel):
     """Defines a single field in a Bronze schema YAML"""
+
     name: str
     type: str
     nullable: bool = True
@@ -25,8 +33,7 @@ class BronzeFieldConfig(BaseModel):
     def validate_type(cls, v: str) -> str:
         if v.lower() not in VALID_FIELD_TYPES:
             raise ValueError(
-                f"Unknown field type '{v}'. "
-                f"Must be one of: {VALID_FIELD_TYPES}"
+                f"Unknown field type '{v}'. " f"Must be one of: {VALID_FIELD_TYPES}"
             )
         return v.lower()
 
@@ -40,6 +47,7 @@ class BronzeFieldConfig(BaseModel):
 
 class BronzeSchemaConfig(BaseModel):
     """Defines a Bronze schema YAML file"""
+
     table: str
     fields: list[BronzeFieldConfig]
 
@@ -55,12 +63,14 @@ class BronzeSchemaConfig(BaseModel):
 # SILVER MODELS
 # ===========================
 
+
 class SilverTableConfig(BaseModel):
     """
     Defines a Silver table YAML config.
     Validates SCD2 settings are consistent —
     if scd2=True then scd2_key and scd2_track_columns are required.
     """
+
     table: str
     input_path: str
     output_path: str
@@ -80,8 +90,7 @@ class SilverTableConfig(BaseModel):
         if self.scd2:
             if not self.scd2_key:
                 raise ValueError(
-                    f"scd2_key is required when scd2=True "
-                    f"for table '{self.table}'"
+                    f"scd2_key is required when scd2=True " f"for table '{self.table}'"
                 )
             if not self.scd2_track_columns:
                 raise ValueError(
@@ -95,8 +104,10 @@ class SilverTableConfig(BaseModel):
 # GOLD MODELS
 # ===========================
 
+
 class GoldTableConfig(BaseModel):
     """Defines a Gold table YAML config"""
+
     table: str
     input_path: str
     output_path: str
@@ -109,8 +120,10 @@ class GoldTableConfig(BaseModel):
 # PIPELINE CONFIG MODELS
 # ===========================
 
+
 class PipelinePathsConfig(BaseModel):
     """Defines the paths section of pipeline_config.yaml"""
+
     raw: str
     bronze: str
     silver: str
@@ -120,12 +133,14 @@ class PipelinePathsConfig(BaseModel):
 
 class PipelineSourcesConfig(BaseModel):
     """Defines the sources section of pipeline_config.yaml"""
+
     online_tcg: dict[str, str]
     salesforce: dict[str, str]
 
 
 class PipelineSilverConfig(BaseModel):
     """Defines the silver section of pipeline_config.yaml"""
+
     config_path: str
 
 
@@ -134,6 +149,7 @@ class PipelineConfig(BaseModel):
     Top level pipeline config model.
     Validates the entire pipeline_config.yaml file.
     """
+
     paths: PipelinePathsConfig
     sources: PipelineSourcesConfig
     silver: PipelineSilverConfig

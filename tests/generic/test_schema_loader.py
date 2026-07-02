@@ -1,7 +1,5 @@
 import pytest
-from pyspark.sql.types import (
-    StructType, StringType, IntegerType
-)
+from pyspark.sql.types import StructType, StringType, IntegerType
 from my_project.utils.schema_loader import load_schema_from_yaml
 
 
@@ -9,12 +7,16 @@ class TestSchemaLoader:
 
     def test_loads_schema_from_valid_yaml(self):
         """Should return a StructType from a valid YAML file"""
-        schema = load_schema_from_yaml("config/schemas/bronze/online_tcg_customers.yaml")
+        schema = load_schema_from_yaml(
+            "config/schemas/bronze/online_tcg_customers.yaml"
+        )
         assert isinstance(schema, StructType)
 
     def test_loaded_schema_has_correct_fields(self):
         """Schema fields should match what is defined in the YAML"""
-        schema = load_schema_from_yaml("config/schemas/bronze/online_tcg_customers.yaml")
+        schema = load_schema_from_yaml(
+            "config/schemas/bronze/online_tcg_customers.yaml"
+        )
         field_names = [field.name for field in schema.fields]
         assert "id" in field_names
         assert "name" in field_names
@@ -24,14 +26,18 @@ class TestSchemaLoader:
 
     def test_loaded_schema_has_correct_types(self):
         """Field types should match what is defined in the YAML"""
-        schema = load_schema_from_yaml("config/schemas/bronze/online_tcg_customers.yaml")
+        schema = load_schema_from_yaml(
+            "config/schemas/bronze/online_tcg_customers.yaml"
+        )
         field_map = {field.name: field.dataType for field in schema.fields}
         assert isinstance(field_map["id"], IntegerType)
         assert isinstance(field_map["name"], StringType)
 
     def test_loaded_schema_respects_nullable(self):
         """Nullable flags should match what is defined in the YAML"""
-        schema = load_schema_from_yaml("config/schemas/bronze/online_tcg_customers.yaml")
+        schema = load_schema_from_yaml(
+            "config/schemas/bronze/online_tcg_customers.yaml"
+        )
         field_map = {field.name: field.nullable for field in schema.fields}
         assert field_map["id"] is True
 

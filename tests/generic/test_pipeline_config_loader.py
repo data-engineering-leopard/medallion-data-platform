@@ -1,8 +1,5 @@
 import pytest
-from my_project.utils.pipeline_config_loader import (
-    load_pipeline_config,
-    get_path
-)
+from my_project.utils.pipeline_config_loader import load_pipeline_config, get_path
 
 
 class TestLoadPipelineConfig:
