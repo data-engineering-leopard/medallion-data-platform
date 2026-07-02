@@ -30,3 +30,20 @@ exclude = [
     ".venv",
     "tests"
 ]
+
+[tool.coverage.run]
+source = ["src/my_project"]
+omit = [
+    "*/pipeline.py",           # entry point
+    "*/__main__.py",           # entry points
+    "*/jobs/*",                # obsolete jobs folder
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "def main\\(\\):",         # exclude main() entry points
+    "raise NotImplementedError",
+]
+show_missing = true

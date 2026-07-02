@@ -24,5 +24,11 @@ quarantine/
 spark-warehouse/
 derby.log
 
+# Coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
 # Raw data (optional - remove this if you want raw CSVs in GitHub)
 # data/raw/
