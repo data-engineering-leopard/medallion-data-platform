@@ -13,4 +13,4 @@ sources:
     leads: sf_leads.csv
 
 silver:
-  config_path: config/schemas/silver
+  config_path: assets/silver

@@ -17,14 +17,14 @@ class TestLoadSilverConfig:
 
     def test_loads_all_table_configs(self):
         """Should load all YAML files from the silver config folder"""
-        configs = load_silver_config("config/schemas/silver")
+        configs = load_silver_config("assets/silver")
         table_names = [c["table"] for c in configs]
         assert "customers" in table_names
         assert "orders" in table_names
 
     def test_config_has_required_fields(self):
         """Each config should have all required fields"""
-        configs = load_silver_config("config/schemas/silver")
+        configs = load_silver_config("assets/silver")
         for config in configs:
             assert "table" in config
             assert "input_path" in config
@@ -33,13 +33,13 @@ class TestLoadSilverConfig:
 
     def test_customers_config_is_scd2(self):
         """Customers table should be marked as scd2"""
-        configs = load_silver_config("config/schemas/silver")
+        configs = load_silver_config("assets/silver")
         customers = next(c for c in configs if c["table"] == "customers")
         assert customers["scd2"] is True
 
     def test_orders_config_is_not_scd2(self):
         """Orders table should not be marked as scd2"""
-        configs = load_silver_config("config/schemas/silver")
+        configs = load_silver_config("assets/silver")
         orders = next(c for c in configs if c["table"] == "orders")
         assert orders["scd2"] is False
 
@@ -231,7 +231,7 @@ class TestRunSilver:
 
         run_silver(
             spark,
-            config_path="config/schemas/silver",
+            config_path="assets/silver",
             bronze_base_path=str(tmp_path / "bronze"),
             silver_base_path=str(tmp_path / "silver")
         )

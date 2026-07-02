@@ -1,6 +1,15 @@
 bundle:
   name: medallion-data-platform
 
+workspace:
+  file_path: /Workspace/medallion-data-platform
+
+sync:
+  include:
+    - assets/**
+    - src/**
+    - config/**
+
 variables:
   bronze_path:
     default: /mnt/data/bronze
