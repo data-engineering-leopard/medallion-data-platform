@@ -5,10 +5,7 @@ from pyspark.sql import functions as F
 logger = get_logger(__name__)
 
 
-def build_fact_orders(
-    orders_df: DataFrame,
-    dim_customers_df: DataFrame
-) -> DataFrame:
+def build_fact_orders(orders_df: DataFrame, dim_customers_df: DataFrame) -> DataFrame:
     """
     Builds the fact_orders Gold fact table.
 
@@ -31,8 +28,7 @@ def build_fact_orders(
 
     # Cast order_date to timestamp for date range comparison
     orders_with_ts = orders_df.withColumn(
-        "order_date_ts",
-        F.to_timestamp(F.col("order_date"), "yyyy-MM-dd")
+        "order_date_ts", F.to_timestamp(F.col("order_date"), "yyyy-MM-dd")
     )
 
     # Join to the customer version that was active at time of order
@@ -41,14 +37,11 @@ def build_fact_orders(
     fact_df = orders_with_ts.join(
         dim_customers_df,
         on=(
-            (orders_with_ts["customer_id"] ==
-             dim_customers_df["customer_id"]) &
-            (orders_with_ts["order_date_ts"] >=
-             dim_customers_df["effective_from"]) &
-            (orders_with_ts["order_date_ts"] <
-             dim_customers_df["effective_to"])
+            (orders_with_ts["customer_id"] == dim_customers_df["customer_id"])
+            & (orders_with_ts["order_date_ts"] >= dim_customers_df["effective_from"])
+            & (orders_with_ts["order_date_ts"] < dim_customers_df["effective_to"])
         ),
-        how="left"
+        how="left",
     ).select(
         orders_df["order_id"],
         dim_customers_df["customer_key"],
@@ -56,7 +49,7 @@ def build_fact_orders(
         orders_df["product"],
         orders_df["amount"],
         orders_df["status"],
-        orders_df["order_date"]
+        orders_df["order_date"],
     )
 
     logger.info(f"fact_orders built with {fact_df.count()} rows")
@@ -68,7 +61,7 @@ def run_fact_orders(
     spark: SparkSession,
     orders_input_path: str,
     dim_customers_path: str,
-    output_path: str
+    output_path: str,
 ) -> None:
     """
     Runs the fact_orders Gold task.
@@ -96,26 +89,27 @@ def run_fact_orders(
     fact_df.write.mode("overwrite").parquet(output_path)
     logger.info(f"Written fact_orders to: {output_path}")
 
+
 def main():
     from my_project.utils.logger import setup_logging
+
     setup_logging()
 
     import argparse
+
     parser = argparse.ArgumentParser(description="Gold fact_orders task")
     parser.add_argument("--orders-input-path", required=True)
     parser.add_argument("--dim-customers-path", required=True)
     parser.add_argument("--output-path", required=True)
     args = parser.parse_args()
 
-    spark = SparkSession.builder \
-        .appName("gold_fact_orders") \
-        .getOrCreate()
+    spark = SparkSession.builder.appName("gold_fact_orders").getOrCreate()
 
     run_fact_orders(
         spark,
         orders_input_path=args.orders_input_path,
         dim_customers_path=args.dim_customers_path,
-        output_path=args.output_path
+        output_path=args.output_path,
     )
 
 

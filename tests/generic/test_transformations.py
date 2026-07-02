@@ -1,17 +1,14 @@
 from my_project.utils.transformations import (
     filter_active_customers,
-    uppercase_customer_names
+    uppercase_customer_names,
 )
+
 
 class TestFilterActiveCustomers:
 
     def test_only_active_customers_returned(self, spark):
         """Only rows with status 'active' should come back"""
-        data = [
-            ("Alive","active"),
-            ("Bob", "inactive"),
-            ("Charlie", "active")
-        ]
+        data = [("Alive", "active"), ("Bob", "inactive"), ("Charlie", "active")]
 
         df = spark.createDataFrame(data, ["name", "status"])
 
@@ -19,22 +16,16 @@ class TestFilterActiveCustomers:
 
         assert result.count() == 2
 
-    def test_inactive_customers_are_removed(self, spark):
-        """Inactive customers should not appear in results"""
-        data = [
-            ("Alice", "active"),
-            ("Bob", "inactive")
-        ]
-        df = spark.createDataFrame(data, ["name", "status"])
-
     def test_empty_dataframe_returns_empty(self, spark):
         """An empty dataset should return an empty dataset"""
         from pyspark.sql.types import StructType, StructField, StringType
 
-        schema = StructType([
-            StructField("name", StringType(), True),
-            StructField("status", StringType(), True)
-        ])
+        schema = StructType(
+            [
+                StructField("name", StringType(), True),
+                StructField("status", StringType(), True),
+            ]
+        )
 
         df = spark.createDataFrame([], schema)
 
@@ -47,10 +38,7 @@ class TestUppercaseCustomerNames:
 
     def test_names_are_uppercased(self, spark):
         """Names should be converted to uppercase"""
-        data = [
-            ("alice","active"),
-            ("bob", "active")
-        ]
+        data = [("alice", "active"), ("bob", "active")]
 
         df = spark.createDataFrame(data, ["name", "status"])
 
@@ -60,7 +48,7 @@ class TestUppercaseCustomerNames:
         assert "ALICE" in names
         assert "BOB" in names
 
-    def test_already_uppercase_names_unchanged(self,spark):
+    def test_already_uppercase_names_unchanged(self, spark):
         """Names already in uppercase should stay the same"""
         data = [("ALICE", "active")]
         df = spark.createDataFrame(data, ["name", "status"])

@@ -1,4 +1,3 @@
-import logging
 import os
 from pyspark.sql import SparkSession
 from my_project.tasks.bronze.bronze_online_tcg import run_bronze
@@ -7,12 +6,10 @@ from my_project.tasks.silver.silver_task import run_silver
 from my_project.tasks.gold.dim_customers import run_dim_customers
 from my_project.tasks.gold.fact_orders import run_fact_orders
 from my_project.tasks.gold.dim_leads import run_dim_leads
-from my_project.utils.pipeline_config_loader import (
-    load_pipeline_config,
-    get_path
-)
+from my_project.utils.pipeline_config_loader import load_pipeline_config, get_path
 
 from my_project.utils.logger import setup_logging, get_logger
+
 setup_logging()
 logger = get_logger(__name__)
 
@@ -38,9 +35,7 @@ def run_pipeline(spark: SparkSession, config: dict) -> None:
     gold_path = get_path(config, "paths", "gold")
 
     # Extract source file names
-    customers_file = get_path(
-        config, "sources", "online_tcg", "customers"
-    )
+    customers_file = get_path(config, "sources", "online_tcg", "customers")
     orders_file = get_path(config, "sources", "online_tcg", "orders")
     leads_file = get_path(config, "sources", "salesforce", "leads")
 
@@ -55,13 +50,11 @@ def run_pipeline(spark: SparkSession, config: dict) -> None:
         spark,
         customers_input=f"{raw_path}/{customers_file}",
         orders_input=f"{raw_path}/{orders_file}",
-        output_path=bronze_path
+        output_path=bronze_path,
     )
 
     run_bronze_salesforce(
-        spark,
-        leads_input=f"{raw_path}/{leads_file}",
-        output_path=bronze_path
+        spark, leads_input=f"{raw_path}/{leads_file}", output_path=bronze_path
     )
 
     # ===========================
@@ -71,10 +64,7 @@ def run_pipeline(spark: SparkSession, config: dict) -> None:
     logger.info("STARTING SILVER LAYER")
     logger.info("=" * 50)
 
-    run_silver(
-        spark,
-        config_path=silver_config_path
-    )
+    run_silver(spark, config_path=silver_config_path)
 
     # ===========================
     # GOLD
@@ -86,20 +76,18 @@ def run_pipeline(spark: SparkSession, config: dict) -> None:
     run_dim_customers(
         spark,
         input_path=f"{silver_path}/customers",
-        output_path=f"{gold_path}/dim_customers"
+        output_path=f"{gold_path}/dim_customers",
     )
 
     run_fact_orders(
         spark,
         orders_input_path=f"{silver_path}/orders",
         dim_customers_path=f"{gold_path}/dim_customers",
-        output_path=f"{gold_path}/fact_orders"
+        output_path=f"{gold_path}/fact_orders",
     )
 
     run_dim_leads(
-        spark,
-        input_path=f"{silver_path}/leads",
-        output_path=f"{gold_path}/dim_leads"
+        spark, input_path=f"{silver_path}/leads", output_path=f"{gold_path}/dim_leads"
     )
 
     logger.info("=" * 50)
@@ -160,8 +148,10 @@ def show_results(spark: SparkSession, config: dict) -> None:
     print("QUARANTINE: Customers (missing date columns)")
     print("=" * 50)
     customers_quarantine = f"{quarantine_path}/customers"
-    if os.path.exists(customers_quarantine) and \
-            len(os.listdir(customers_quarantine)) > 0:
+    if (
+        os.path.exists(customers_quarantine)
+        and len(os.listdir(customers_quarantine)) > 0
+    ):
         spark.read.parquet(customers_quarantine).show(truncate=False)
     else:
         print("No quarantined customer records")
@@ -170,8 +160,7 @@ def show_results(spark: SparkSession, config: dict) -> None:
     print("QUARANTINE: Leads (missing date columns)")
     print("=" * 50)
     leads_quarantine = f"{quarantine_path}/leads"
-    if os.path.exists(leads_quarantine) and \
-            len(os.listdir(leads_quarantine)) > 0:
+    if os.path.exists(leads_quarantine) and len(os.listdir(leads_quarantine)) > 0:
         spark.read.parquet(leads_quarantine).show(truncate=False)
     else:
         print("No quarantined lead records")
@@ -221,10 +210,11 @@ def show_quarantine_summary(spark: SparkSession, config: dict) -> None:
 
 
 if __name__ == "__main__":
-    spark = SparkSession.builder \
-        .master("local[*]") \
-        .appName("medallion_pipeline") \
+    spark = (
+        SparkSession.builder.master("local[*]")
+        .appName("medallion_pipeline")
         .getOrCreate()
+    )
 
     spark.sparkContext.setLogLevel("ERROR")
 

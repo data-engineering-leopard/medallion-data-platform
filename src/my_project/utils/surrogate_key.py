@@ -21,14 +21,9 @@ def add_surrogate_key(df: DataFrame, key_column_name: str) -> DataFrame:
     """
     logger.info(f"Adding surrogate key column: {key_column_name}")
 
-    df_with_key = df.withColumn(
-        key_column_name,
-        F.monotonically_increasing_id()
-    )
+    df_with_key = df.withColumn(key_column_name, F.monotonically_increasing_id())
 
     # Reorder so surrogate key is the first column
-    cols = [key_column_name] + [
-        col for col in df.columns if col != key_column_name
-    ]
+    cols = [key_column_name] + [col for col in df.columns if col != key_column_name]
 
     return df_with_key.select(cols)

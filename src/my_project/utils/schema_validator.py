@@ -18,9 +18,7 @@ def validate_schema(df: DataFrame, expected_schema: StructType) -> dict:
         - type_mismatches: dict of column name -> (expected type, actual type)
     """
     actual_fields = {field.name: field.dataType for field in df.schema.fields}
-    expected_fields = {
-        field.name: field.dataType for field in expected_schema.fields
-    }
+    expected_fields = {field.name: field.dataType for field in expected_schema.fields}
 
     missing_columns = []
     type_mismatches = {}
@@ -30,14 +28,13 @@ def validate_schema(df: DataFrame, expected_schema: StructType) -> dict:
             # Column is missing entirely from the incoming data
             missing_columns.append(field_name)
             logger.warning(
-                f"Missing column: '{field_name}' "
-                f"(expected type: {expected_type})"
+                f"Missing column: '{field_name}' " f"(expected type: {expected_type})"
             )
         elif type(actual_fields[field_name]) != type(expected_type):
             # Column exists but has the wrong type
             type_mismatches[field_name] = {
                 "expected": str(expected_type),
-                "actual": str(actual_fields[field_name])
+                "actual": str(actual_fields[field_name]),
             }
             logger.warning(
                 f"Type mismatch for column '{field_name}': "
@@ -58,5 +55,5 @@ def validate_schema(df: DataFrame, expected_schema: StructType) -> dict:
     return {
         "is_valid": is_valid,
         "missing_columns": missing_columns,
-        "type_mismatches": type_mismatches
+        "type_mismatches": type_mismatches,
     }

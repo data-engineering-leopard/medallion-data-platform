@@ -2,8 +2,9 @@ from pyspark.sql.types import StructType
 from my_project.tasks.bronze.bronze_salesforce import (
     load_leads,
     get_leads_schema,
-    run_bronze_salesforce
+    run_bronze_salesforce,
 )
+
 
 class TestSchemas:
 
@@ -26,6 +27,7 @@ class TestSchemas:
         assert "country" in field_names
         assert "created_date" in field_names
         assert "updated_date" in field_names
+
 
 class TestLoadLeads:
 
@@ -68,24 +70,19 @@ class TestLoadLeads:
 
 class TestRunBronzeSalesforce:
 
-    def test_run_bronze_salesforce_creates_leads_output(
-        self, spark, tmp_path
-    ):
+    def test_run_bronze_salesforce_creates_leads_output(self, spark, tmp_path):
         """run_bronze_salesforce should write leads parquet to output path"""
         import os
+
         run_bronze_salesforce(
-            spark,
-            leads_input="data/raw/sf_leads.csv",
-            output_path=str(tmp_path)
+            spark, leads_input="data/raw/sf_leads.csv", output_path=str(tmp_path)
         )
         assert os.path.exists(f"{tmp_path}/leads")
 
     def test_run_bronze_salesforce_output_readable(self, spark, tmp_path):
         """Written leads parquet should be readable with correct row count"""
         run_bronze_salesforce(
-            spark,
-            leads_input="data/raw/sf_leads.csv",
-            output_path=str(tmp_path)
+            spark, leads_input="data/raw/sf_leads.csv", output_path=str(tmp_path)
         )
         df = spark.read.parquet(f"{tmp_path}/leads")
         assert df.count() == 8

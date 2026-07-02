@@ -1,8 +1,15 @@
 import yaml
 from pyspark.sql.types import (
-    StructType, StructField,
-    StringType, IntegerType, FloatType, DoubleType,
-    BooleanType, LongType, TimestampType, DateType
+    StructType,
+    StructField,
+    StringType,
+    IntegerType,
+    FloatType,
+    DoubleType,
+    BooleanType,
+    LongType,
+    TimestampType,
+    DateType,
 )
 from my_project.utils.logger import get_logger
 from my_project.utils.config_models import BronzeSchemaConfig
@@ -17,7 +24,7 @@ TYPE_MAP = {
     "boolean": BooleanType(),
     "long": LongType(),
     "timestamp": TimestampType(),
-    "date": DateType()
+    "date": DateType(),
 }
 
 
@@ -33,22 +40,14 @@ def load_schema_from_yaml(yaml_path: str) -> StructType:
         with open(yaml_path, "r") as f:
             raw_config = yaml.safe_load(f)
     except FileNotFoundError:
-        raise FileNotFoundError(
-            f"Schema YAML not found at path: {yaml_path}"
-        )
+        raise FileNotFoundError(f"Schema YAML not found at path: {yaml_path}")
 
     # Validate with Pydantic — raises ValidationError if invalid
     config = BronzeSchemaConfig(**raw_config)
 
     fields = []
     for field in config.fields:
-        fields.append(
-            StructField(
-                field.name,
-                TYPE_MAP[field.type],
-                field.nullable
-            )
-        )
+        fields.append(StructField(field.name, TYPE_MAP[field.type], field.nullable))
 
     logger.info(
         f"Loaded schema for table '{config.table}' "

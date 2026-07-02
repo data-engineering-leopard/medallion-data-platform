@@ -31,9 +31,7 @@ def load_leads(spark: SparkSession, file_path: str) -> DataFrame:
 
 
 def run_bronze_salesforce(
-    spark: SparkSession,
-    leads_input: str,
-    output_path: str
+    spark: SparkSession, leads_input: str, output_path: str
 ) -> None:
     """
     Runs the full bronze task for Salesforce source system.
@@ -52,22 +50,20 @@ def run_bronze_salesforce(
 
 def main():
     from my_project.utils.logger import setup_logging
+
     setup_logging()
 
     import argparse
+
     parser = argparse.ArgumentParser(description="Bronze Salesforce task")
     parser.add_argument("--leads-input", required=True)
     parser.add_argument("--output-path", required=True)
     args = parser.parse_args()
 
-    spark = SparkSession.builder \
-        .appName("bronze_salesforce") \
-        .getOrCreate()
+    spark = SparkSession.builder.appName("bronze_salesforce").getOrCreate()
 
     run_bronze_salesforce(
-        spark,
-        leads_input=args.leads_input,
-        output_path=args.output_path
+        spark, leads_input=args.leads_input, output_path=args.output_path
     )
 
 
