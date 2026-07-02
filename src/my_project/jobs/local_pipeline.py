@@ -18,13 +18,17 @@ PIPELINE_CONFIG_PATH = "config/pipeline_config.yaml"
 
 def run_pipeline(spark: SparkSession, config: dict) -> None:
     """
-    Runs the full medallion pipeline end to end.
-    All paths driven by pipeline_config.yaml.
+    Local development pipeline runner.
 
-    Bronze → Silver → Gold
+    This script runs the full medallion pipeline locally for development
+    and debugging purposes.
 
-    In Databricks each of these would be a separate job
-    with paths passed as job parameters.
+    In production this pipeline is orchestrated by Databricks Workflows
+    as defined in databricks.yml — each task runs independently with
+    its own compute and task dependencies enforced by Databricks.
+
+    Usage:
+        PYTHONPATH=src python src/my_project/local_pipeline.py
     """
 
     # Extract paths from config

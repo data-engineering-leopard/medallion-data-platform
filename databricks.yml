@@ -1,15 +1,6 @@
 bundle:
   name: medallion-data-platform
 
-workspace:
-  file_path: /Workspace/medallion-data-platform
-
-sync:
-  include:
-    - assets/**
-    - src/**
-    - config/**
-
 variables:
   bronze_path:
     default: /mnt/data/bronze
@@ -44,11 +35,28 @@ x-default-cluster: &default_cluster
 
 resources:
   jobs:
+    daily_pipeline:
+      name: "Daily Medallion Pipeline"
 
-    bronze_online_tcg:
-      name: "[DEV] Bronze — Online TCG"
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: "Europe/London"
+        pause_status: PAUSED
+
+#      email_notifications:
+#        on_failure:
+#          - your@email.com
+#        on_success:
+#          - your@email.com
+
       tasks:
-        - task_key: run_bronze_online_tcg
+
+        # ===========================
+        # BRONZE TASKS
+        # ===========================
+
+        - task_key: bronze_online_tcg
+          description: "Ingest raw customers and orders from Online TCG"
           python_wheel_task:
             package_name: my_project
             entry_point: bronze_online_tcg
@@ -58,10 +66,8 @@ resources:
               - "--output-path=${var.bronze_path}"
           new_cluster: *default_cluster
 
-    bronze_salesforce:
-      name: "[DEV] Bronze — Salesforce"
-      tasks:
-        - task_key: run_bronze_salesforce
+        - task_key: bronze_salesforce
+          description: "Ingest raw leads from Salesforce"
           python_wheel_task:
             package_name: my_project
             entry_point: bronze_salesforce
@@ -70,21 +76,30 @@ resources:
               - "--output-path=${var.bronze_path}"
           new_cluster: *default_cluster
 
-    silver_task:
-      name: "[DEV] Silver — All Tables"
-      tasks:
-        - task_key: run_silver
+        # ===========================
+        # SILVER TASK
+        # ===========================
+
+        - task_key: silver_task
+          description: "Clean and validate all bronze tables"
+          depends_on:
+            - task_key: bronze_online_tcg
+            - task_key: bronze_salesforce
           python_wheel_task:
             package_name: my_project
             entry_point: silver_task
             parameters:
-              - "--config-path=config/schemas/silver"
+              - "--config-path=assets/silver"
           new_cluster: *default_cluster
 
-    gold_dim_customers:
-      name: "[DEV] Gold — dim_customers"
-      tasks:
-        - task_key: run_dim_customers
+        # ===========================
+        # GOLD TASKS
+        # ===========================
+
+        - task_key: gold_dim_customers
+          description: "Build dim_customers Gold dimension"
+          depends_on:
+            - task_key: silver_task
           python_wheel_task:
             package_name: my_project
             entry_point: dim_customers
@@ -93,7 +108,27 @@ resources:
               - "--output-path=${var.gold_path}/dim_customers"
           new_cluster: *default_cluster
 
-    gold_fact_orders:
-      name: "[DEV] Gold — fact_orders"
-      tasks:
-        - task_key: run_f
+        - task_key: gold_fact_orders
+          description: "Build fact_orders Gold fact table"
+          depends_on:
+            - task_key: gold_dim_customers
+          python_wheel_task:
+            package_name: my_project
+            entry_point: fact_orders
+            parameters:
+              - "--orders-input-path=${var.silver_path}/orders"
+              - "--dim-customers-path=${var.gold_path}/dim_customers"
+              - "--output-path=${var.gold_path}/fact_orders"
+          new_cluster: *default_cluster
+
+        - task_key: gold_dim_leads
+          description: "Build dim_leads Gold dimension"
+          depends_on:
+            - task_key: silver_task
+          python_wheel_task:
+            package_name: my_project
+            entry_point: dim_leads
+            parameters:
+              - "--input-path=${var.silver_path}/leads"
+              - "--output-path=${var.gold_path}/dim_leads"
+          new_cluster: *default_cluster
