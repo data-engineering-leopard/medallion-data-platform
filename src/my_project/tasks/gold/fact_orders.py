@@ -1,60 +1,80 @@
-from my_project.utils.logger import get_logger
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
+
+from my_project.tasks.core.base_gold_task import GoldTask
+from my_project.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-def build_fact_orders(orders_df: DataFrame, dim_customers_df: DataFrame) -> DataFrame:
+class FactOrdersTask(GoldTask):
     """
-    Builds the fact_orders Gold fact table.
+    Gold task for building the fact_orders fact table.
 
-    Joins Silver orders to dim_customers at the time of the order.
-    This means the customer_key links to the version of the customer
-    that was active when the order was placed — not necessarily
-    the current version.
+    Reads from Silver orders parquet and joins to dim_customers
+    at the time of the order for historical accuracy.
 
-    If no matching customer version is found the order is still
-    kept with a null customer_key — we never drop facts.
-
-    Args:
-        orders_df: Silver orders DataFrame
-        dim_customers_df: Gold dim_customers DataFrame with SCD2 columns
-
-    Returns:
-        fact_orders DataFrame ready for Gold output
+    load_type = overwrite — orders are immutable, full refresh each run.
     """
-    logger.info("Building fact_orders")
 
-    # Cast order_date to timestamp for date range comparison
-    orders_with_ts = orders_df.withColumn(
-        "order_date_ts", F.to_timestamp(F.col("order_date"), "yyyy-MM-dd")
-    )
+    load_type = "overwrite"
 
-    # Join to the customer version that was active at time of order
-    # An order falls within a customer version when:
-    # order_date >= effective_from AND order_date < effective_to
-    fact_df = orders_with_ts.join(
-        dim_customers_df,
-        on=(
-            (orders_with_ts["customer_id"] == dim_customers_df["customer_id"])
-            & (orders_with_ts["order_date_ts"] >= dim_customers_df["effective_from"])
-            & (orders_with_ts["order_date_ts"] < dim_customers_df["effective_to"])
-        ),
-        how="left",
-    ).select(
-        orders_df["order_id"],
-        dim_customers_df["customer_key"],
-        orders_df["customer_id"],
-        orders_df["product"],
-        orders_df["amount"],
-        orders_df["status"],
-        orders_df["order_date"],
-    )
+    def __init__(
+        self,
+        spark: SparkSession,
+        input_path: str,
+        output_path: str,
+        dim_customers_path: str,
+    ):
+        super().__init__(spark, input_path, output_path)
+        self.dim_customers_path = dim_customers_path
 
-    logger.info(f"fact_orders built with {fact_df.count()} rows")
+    def transform(self, df: DataFrame) -> DataFrame:
+        """
+        Joins orders to dim_customers at the time of the order.
 
-    return fact_df
+        Loads dim_customers internally since fact_orders requires
+        two input sources. The join uses order_date to find the
+        correct customer version that was active at time of order.
+
+        Args:
+            df: Silver orders DataFrame
+
+        Returns:
+            fact_orders DataFrame with customer_key resolved
+        """
+        logger.info("Building fact_orders")
+
+        dim_customers_df = self.spark.read.parquet(self.dim_customers_path)
+
+        orders_with_ts = df.withColumn(
+            "order_date_ts",
+            F.to_timestamp(F.col("order_date"), "yyyy-MM-dd"),
+        )
+
+        fact_df = orders_with_ts.join(
+            dim_customers_df,
+            on=(
+                (orders_with_ts["customer_id"] == dim_customers_df["customer_id"])
+                & (
+                    orders_with_ts["order_date_ts"]
+                    >= dim_customers_df["effective_from"]
+                )
+                & (orders_with_ts["order_date_ts"] < dim_customers_df["effective_to"])
+            ),
+            how="left",
+        ).select(
+            df["order_id"],
+            dim_customers_df["customer_key"],
+            df["customer_id"],
+            df["product"],
+            df["amount"],
+            df["status"],
+            df["order_date"],
+        )
+
+        logger.info(f"fact_orders built with {fact_df.count()} rows")
+        return fact_df
 
 
 def run_fact_orders(
@@ -64,12 +84,8 @@ def run_fact_orders(
     output_path: str,
 ) -> None:
     """
-    Runs the fact_orders Gold task.
-
-    Reads Silver orders and Gold dim_customers, builds the fact
-    table and writes to Gold parquet output.
-
-    In Databricks this would write to a Delta table instead.
+    Entry point for the fact_orders Gold task.
+    Instantiates and runs FactOrdersTask.
 
     Args:
         spark: Active SparkSession
@@ -77,17 +93,13 @@ def run_fact_orders(
         dim_customers_path: Path to Gold dim_customers parquet
         output_path: Path to write Gold fact_orders parquet
     """
-    logger.info("Running fact_orders task")
-    logger.info(f"Reading Silver orders from: {orders_input_path}")
-    logger.info(f"Reading dim_customers from: {dim_customers_path}")
-
-    orders_df = spark.read.parquet(orders_input_path)
-    dim_customers_df = spark.read.parquet(dim_customers_path)
-
-    fact_df = build_fact_orders(orders_df, dim_customers_df)
-
-    fact_df.write.mode("overwrite").parquet(output_path)
-    logger.info(f"Written fact_orders to: {output_path}")
+    task = FactOrdersTask(
+        spark=spark,
+        input_path=orders_input_path,
+        output_path=output_path,
+        dim_customers_path=dim_customers_path,
+    )
+    task.run()
 
 
 def main():
