@@ -1,36 +1,65 @@
 import os
-from my_project.tasks.gold.fact_orders import build_fact_orders, run_fact_orders
+import pytest
+from datetime import datetime
+from my_project.tasks.gold.fact_orders import FactOrdersTask, run_fact_orders
 
 
 class TestBuildFactOrders:
 
-    def test_customer_key_added_from_dim(
-        self, spark, silver_orders_schema, dim_customers_schema
+    @pytest.fixture(scope="class")
+    def standard_fact_result(
+        self, spark, silver_orders_schema, dim_customers_schema, tmp_path_factory
     ):
-        """fact_orders should have customer_key joined from dim_customers"""
+        """Build fact_orders once and reuse across tests"""
+        dim_path = str(tmp_path_factory.mktemp("dim_customers"))
+        spark.createDataFrame(
+            [
+                (
+                    1001,
+                    1,
+                    "ALICE",
+                    "alice@email.com",
+                    "active",
+                    "UK",
+                    datetime(2024, 1, 1),
+                    datetime(9999, 12, 31),
+                    True,
+                )
+            ],
+            dim_customers_schema,
+        ).write.mode("overwrite").parquet(dim_path)
+
         orders = spark.createDataFrame(
             [(1, 1, "LAPTOP", 999.99, "completed", "2024-01-15")], silver_orders_schema
         )
 
-        dim = spark.createDataFrame(
-            [(1001, 1, "ALICE", "alice@email.com", "active", "UK", None, None, True)],
-            dim_customers_schema,
+        task = FactOrdersTask(
+            spark=spark,
+            input_path="unused",
+            output_path="unused",
+            dim_customers_path=dim_path,
         )
+        return task.transform(orders).cache()
 
-        result = build_fact_orders(orders, dim)
-        assert "customer_key" in result.columns
+    def test_customer_key_added_from_dim(self, standard_fact_result):
+        """fact_orders should have customer_key joined from dim_customers"""
+        assert "customer_key" in standard_fact_result.columns
 
-    def test_order_joins_to_current_customer_version(
-        self, spark, silver_orders_schema, dim_customers_schema
+    def test_all_order_columns_present(self, standard_fact_result):
+        """All order columns should be present in fact_orders"""
+        assert "order_id" in standard_fact_result.columns
+        assert "customer_id" in standard_fact_result.columns
+        assert "product" in standard_fact_result.columns
+        assert "amount" in standard_fact_result.columns
+        assert "status" in standard_fact_result.columns
+        assert "order_date" in standard_fact_result.columns
+
+    def test_order_joins_to_correct_customer_version(
+        self, spark, silver_orders_schema, dim_customers_schema, tmp_path_factory
     ):
         """Order should join to the correct customer version at time of order"""
-        from datetime import datetime
-
-        orders = spark.createDataFrame(
-            [(1, 1, "LAPTOP", 999.99, "completed", "2024-06-15")], silver_orders_schema
-        )
-
-        dim = spark.createDataFrame(
+        dim_path = str(tmp_path_factory.mktemp("dim_v"))
+        spark.createDataFrame(
             [
                 (
                     1001,
@@ -56,103 +85,106 @@ class TestBuildFactOrders:
                 ),
             ],
             dim_customers_schema,
+        ).write.mode("overwrite").parquet(dim_path)
+
+        orders = spark.createDataFrame(
+            [(1, 1, "LAPTOP", 999.99, "completed", "2024-06-15")], silver_orders_schema
         )
 
-        result = build_fact_orders(orders, dim)
-
+        task = FactOrdersTask(
+            spark=spark,
+            input_path="unused",
+            output_path="unused",
+            dim_customers_path=dim_path,
+        )
+        result = task.transform(orders)
         assert result.count() == 1
         assert result.collect()[0]["customer_key"] == 1002
 
-    def test_all_order_columns_present(
-        self, spark, silver_orders_schema, dim_customers_schema
-    ):
-        """All order columns should be present in fact_orders"""
-        orders = spark.createDataFrame(
-            [(1, 1, "LAPTOP", 999.99, "completed", "2024-01-15")], silver_orders_schema
-        )
-
-        dim = spark.createDataFrame(
-            [(1001, 1, "ALICE", "alice@email.com", "active", "UK", None, None, True)],
-            dim_customers_schema,
-        )
-
-        result = build_fact_orders(orders, dim)
-        assert "order_id" in result.columns
-        assert "customer_id" in result.columns
-        assert "product" in result.columns
-        assert "amount" in result.columns
-        assert "status" in result.columns
-        assert "order_date" in result.columns
-
     def test_orders_without_matching_customer_kept(
-        self, spark, silver_orders_schema, dim_customers_schema
+        self, spark, silver_orders_schema, dim_customers_schema, tmp_path_factory
     ):
-        """Orders with no matching customer should still appear with null key"""
+        """Orders with no matching customer should appear with null key"""
+        dim_path = str(tmp_path_factory.mktemp("dim_null"))
+        spark.createDataFrame(
+            [
+                (
+                    1001,
+                    1,
+                    "ALICE",
+                    "alice@email.com",
+                    "active",
+                    "UK",
+                    datetime(2024, 1, 1),
+                    datetime(9999, 12, 31),
+                    True,
+                )
+            ],
+            dim_customers_schema,
+        ).write.mode("overwrite").parquet(dim_path)
+
         orders = spark.createDataFrame(
             [(1, 99, "LAPTOP", 999.99, "completed", "2024-01-15")], silver_orders_schema
         )
 
-        dim = spark.createDataFrame(
-            [(1001, 1, "ALICE", "alice@email.com", "active", "UK", None, None, True)],
-            dim_customers_schema,
+        task = FactOrdersTask(
+            spark=spark,
+            input_path="unused",
+            output_path="unused",
+            dim_customers_path=dim_path,
         )
-
-        result = build_fact_orders(orders, dim)
+        result = task.transform(orders)
         assert result.count() == 1
         assert result.collect()[0]["customer_key"] is None
 
 
 class TestRunFactOrders:
 
-    def test_run_fact_orders_creates_output(
-        self, spark, tmp_path, silver_orders_schema, dim_customers_schema
+    @pytest.fixture(scope="class")
+    def fact_orders_output(
+        self, spark, tmp_path_factory, silver_orders_schema, dim_customers_schema
     ):
+        """Run fact_orders once and reuse output across all run tests"""
+        orders_path = str(tmp_path_factory.mktemp("orders"))
+        dim_path = str(tmp_path_factory.mktemp("dim"))
+        output_path = str(tmp_path_factory.mktemp("fact_orders"))
+
+        spark.createDataFrame(
+            [(1, 1, "LAPTOP", 999.99, "completed", "2024-01-15")], silver_orders_schema
+        ).write.mode("overwrite").parquet(orders_path)
+
+        spark.createDataFrame(
+            [
+                (
+                    1001,
+                    1,
+                    "ALICE",
+                    "alice@email.com",
+                    "active",
+                    "UK",
+                    datetime(2024, 1, 1),
+                    datetime(9999, 12, 31),
+                    True,
+                )
+            ],
+            dim_customers_schema,
+        ).write.mode("overwrite").parquet(dim_path)
+
+        run_fact_orders(
+            spark,
+            orders_input_path=orders_path,
+            dim_customers_path=dim_path,
+            output_path=output_path,
+        )
+        return {"spark": spark, "output_path": output_path}
+
+    def test_run_fact_orders_creates_output(self, fact_orders_output):
         """run_fact_orders should write parquet to output path"""
-        orders_path = str(tmp_path / "silver/orders")
-        dim_path = str(tmp_path / "gold/dim_customers")
-        output_path = str(tmp_path / "gold/fact_orders")
+        assert os.path.exists(fact_orders_output["output_path"])
 
-        spark.createDataFrame(
-            [(1, 1, "LAPTOP", 999.99, "completed", "2024-01-15")], silver_orders_schema
-        ).write.parquet(orders_path)
-
-        spark.createDataFrame(
-            [(1001, 1, "ALICE", "alice@email.com", "active", "UK", None, None, True)],
-            dim_customers_schema,
-        ).write.parquet(dim_path)
-
-        run_fact_orders(
-            spark,
-            orders_input_path=orders_path,
-            dim_customers_path=dim_path,
-            output_path=output_path,
-        )
-
-        assert os.path.exists(output_path)
-
-    def test_run_fact_orders_output_readable(
-        self, spark, tmp_path, silver_orders_schema, dim_customers_schema
-    ):
+    def test_run_fact_orders_output_readable(self, fact_orders_output):
         """Output parquet should be readable with correct row count"""
-        orders_path = str(tmp_path / "silver/orders2")
-        dim_path = str(tmp_path / "gold/dim_customers2")
-        output_path = str(tmp_path / "gold/fact_orders2")
-
-        spark.createDataFrame(
-            [(1, 1, "LAPTOP", 999.99, "completed", "2024-01-15")], silver_orders_schema
-        ).write.parquet(orders_path)
-
-        spark.createDataFrame(
-            [(1001, 1, "ALICE", "alice@email.com", "active", "UK", None, None, True)],
-            dim_customers_schema,
-        ).write.parquet(dim_path)
-
-        run_fact_orders(
-            spark,
-            orders_input_path=orders_path,
-            dim_customers_path=dim_path,
-            output_path=output_path,
+        result = fact_orders_output["spark"].read.parquet(
+            fact_orders_output["output_path"]
         )
-
-        result = spark.read.parquet(output_path)
         assert result.count() == 1
