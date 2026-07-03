@@ -2,22 +2,7 @@ import os
 import pytest
 from pyspark.sql import DataFrame
 from my_project.tasks.gold.dim_customers import DimCustomersTask
-
-
-# ===========================
-# SHARED TEST DATA
-# ===========================
-
-SINGLE_CUSTOMER = [(1, "ALICE", "alice@email.com", "active", "UK", None, None, True)]
-
-TWO_VERSIONS_OF_CUSTOMER = [
-    (1, "ALICE", "alice@old.com", "active", "UK", None, None, False),
-    (1, "ALICE", "alice@new.com", "active", "UK", None, None, True),
-]
-
-MULTIPLE_CUSTOMERS = TWO_VERSIONS_OF_CUSTOMER + [
-    (2, "BOB", "bob@email.com", "active", "US", None, None, True)
-]
+from my_project.utils.test_data_builder import make_dataframe
 
 
 # ===========================
@@ -35,7 +20,11 @@ class TestDimCustomersTransform:
     @pytest.fixture(scope="class")
     def single_customer_result(self, spark, task, silver_customers_schema):
         """Transform a single customer — reused across multiple tests"""
-        df = spark.createDataFrame(SINGLE_CUSTOMER, silver_customers_schema)
+        df = make_dataframe(
+            spark,
+            silver_customers_schema,
+            [{"name": "ALICE", "status": "active", "is_current": True}],
+        )
         return task.transform(df).cache()
 
     def test_customer_key_is_added(self, single_customer_result):
@@ -48,7 +37,14 @@ class TestDimCustomersTransform:
 
     def test_customer_key_is_unique(self, spark, task, silver_customers_schema):
         """Every row in dim_customers should have a unique customer_key"""
-        df = spark.createDataFrame(TWO_VERSIONS_OF_CUSTOMER, silver_customers_schema)
+        df = make_dataframe(
+            spark,
+            silver_customers_schema,
+            [
+                {"email": "alice@old.com", "is_current": False},
+                {"email": "alice@new.com", "is_current": True},
+            ],
+        )
         result = task.transform(df)
         total = result.count()
         distinct = result.select("customer_key").distinct().count()
@@ -87,7 +83,15 @@ class TestDimCustomersTransform:
 
     def test_all_rows_preserved(self, spark, task, silver_customers_schema):
         """All rows including historical versions should be in dim_customers"""
-        df = spark.createDataFrame(MULTIPLE_CUSTOMERS, silver_customers_schema)
+        df = make_dataframe(
+            spark,
+            silver_customers_schema,
+            [
+                {"email": "alice@old.com", "is_current": False},
+                {"email": "alice@new.com", "is_current": True},
+                {"id": 2, "name": "BOB", "is_current": True},
+            ],
+        )
         result = task.transform(df)
         assert result.count() == 3
 
@@ -105,9 +109,11 @@ class TestDimCustomersTaskRun:
         silver_path = str(tmp_path_factory.mktemp("silver_customers"))
         gold_path = str(tmp_path_factory.mktemp("gold_dim_customers"))
 
-        spark.createDataFrame(SINGLE_CUSTOMER, silver_customers_schema).write.mode(
-            "overwrite"
-        ).parquet(silver_path)
+        make_dataframe(
+            spark,
+            silver_customers_schema,
+            [{"name": "ALICE", "status": "active", "is_current": True}],
+        ).write.mode("overwrite").parquet(silver_path)
 
         DimCustomersTask(
             spark=spark, input_path=silver_path, output_path=gold_path

@@ -2,80 +2,7 @@ import os
 import pytest
 from pyspark.sql import DataFrame
 from my_project.tasks.gold.dim_leads import DimLeadsTask
-
-
-# ===========================
-# SHARED TEST DATA
-# ===========================
-
-SINGLE_LEAD = [
-    (
-        1,
-        "John",
-        "Smith",
-        "john@acme.com",
-        "Acme",
-        "open",
-        "web",
-        "UK",
-        "2024-01-10",
-        None,
-        None,
-        None,
-        True,
-    )
-]
-
-TWO_VERSIONS_OF_LEAD = [
-    (
-        1,
-        "John",
-        "Smith",
-        "john@old.com",
-        "Acme",
-        "open",
-        "web",
-        "UK",
-        "2024-01-10",
-        None,
-        None,
-        None,
-        False,
-    ),
-    (
-        1,
-        "John",
-        "Smith",
-        "john@new.com",
-        "Acme",
-        "open",
-        "web",
-        "UK",
-        "2024-01-10",
-        None,
-        None,
-        None,
-        True,
-    ),
-]
-
-MULTIPLE_LEADS = TWO_VERSIONS_OF_LEAD + [
-    (
-        2,
-        "Sarah",
-        "Jones",
-        "sarah@globex.com",
-        "Globex",
-        "working",
-        "phone",
-        "US",
-        "2024-01-11",
-        None,
-        None,
-        None,
-        True,
-    )
-]
+from my_project.utils.test_data_builder import make_dataframe
 
 
 # ===========================
@@ -93,7 +20,18 @@ class TestDimLeadsTransform:
     @pytest.fixture(scope="class")
     def single_lead_result(self, spark, task, silver_leads_schema):
         """Transform a single lead — reused across multiple tests"""
-        df = spark.createDataFrame(SINGLE_LEAD, silver_leads_schema)
+        df = make_dataframe(
+            spark,
+            silver_leads_schema,
+            [
+                {
+                    "first_name": "John",
+                    "last_name": "Smith",
+                    "company": "Acme",
+                    "is_current": True,
+                }
+            ],
+        )
         return task.transform(df).cache()
 
     def test_lead_key_is_added(self, single_lead_result):
@@ -106,7 +44,14 @@ class TestDimLeadsTransform:
 
     def test_lead_key_is_unique(self, spark, task, silver_leads_schema):
         """Every row in dim_leads should have a unique lead_key"""
-        df = spark.createDataFrame(TWO_VERSIONS_OF_LEAD, silver_leads_schema)
+        df = make_dataframe(
+            spark,
+            silver_leads_schema,
+            [
+                {"email": "john@old.com", "is_current": False},
+                {"email": "john@new.com", "is_current": True},
+            ],
+        )
         result = task.transform(df)
         total = result.count()
         distinct = result.select("lead_key").distinct().count()
@@ -118,6 +63,10 @@ class TestDimLeadsTransform:
             single_lead_result["lead_key"].isNull()
         ).count()
         assert null_count == 0
+
+    def test_lead_key_is_first_column(self, single_lead_result):
+        """lead_key should be the first column"""
+        assert single_lead_result.columns[0] == "lead_key"
 
     def test_all_silver_columns_present(self, single_lead_result):
         """All silver columns should be present in dim_leads"""
@@ -139,13 +88,32 @@ class TestDimLeadsTransform:
 
     def test_all_rows_preserved(self, spark, task, silver_leads_schema):
         """All rows including historical versions should be in dim_leads"""
-        df = spark.createDataFrame(MULTIPLE_LEADS, silver_leads_schema)
+        df = make_dataframe(
+            spark,
+            silver_leads_schema,
+            [
+                {
+                    "email": "john@old.com",
+                    "last_name": "Smith",
+                    "company": "Acme",
+                    "is_current": False,
+                },
+                {
+                    "email": "john@new.com",
+                    "last_name": "Smith",
+                    "company": "Acme",
+                    "is_current": True,
+                },
+                {
+                    "lead_id": 2,
+                    "last_name": "Jones",
+                    "company": "Globex",
+                    "is_current": True,
+                },
+            ],
+        )
         result = task.transform(df)
         assert result.count() == 3
-
-    def test_lead_key_is_first_column(self, single_lead_result):
-        """lead_key should be the first column"""
-        assert single_lead_result.columns[0] == "lead_key"
 
 
 # ===========================
@@ -161,9 +129,18 @@ class TestDimLeadsTaskRun:
         silver_path = str(tmp_path_factory.mktemp("silver_leads"))
         gold_path = str(tmp_path_factory.mktemp("gold_dim_leads"))
 
-        spark.createDataFrame(SINGLE_LEAD, silver_leads_schema).write.mode(
-            "overwrite"
-        ).parquet(silver_path)
+        make_dataframe(
+            spark,
+            silver_leads_schema,
+            [
+                {
+                    "first_name": "John",
+                    "last_name": "Smith",
+                    "company": "Acme",
+                    "is_current": True,
+                }
+            ],
+        ).write.mode("overwrite").parquet(silver_path)
 
         DimLeadsTask(spark=spark, input_path=silver_path, output_path=gold_path).run()
 

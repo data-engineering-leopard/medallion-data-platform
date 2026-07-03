@@ -3,54 +3,7 @@ import pytest
 from datetime import datetime
 from pyspark.sql import DataFrame
 from my_project.tasks.gold.fact_orders import FactOrdersTask
-
-
-# ===========================
-# SHARED TEST DATA
-# ===========================
-
-SINGLE_ORDER = [(1, 1, "LAPTOP", 999.99, "completed", "2024-01-15")]
-
-SINGLE_CUSTOMER_IN_DIM = [
-    (
-        1001,
-        1,
-        "ALICE",
-        "alice@email.com",
-        "active",
-        "UK",
-        datetime(2024, 1, 1),
-        datetime(9999, 12, 31),
-        True,
-    )
-]
-
-TWO_VERSIONS_OF_CUSTOMER = [
-    (
-        1001,
-        1,
-        "ALICE",
-        "alice@old.com",
-        "active",
-        "UK",
-        datetime(2024, 1, 1),
-        datetime(2024, 6, 1),
-        False,
-    ),
-    (
-        1002,
-        1,
-        "ALICE",
-        "alice@new.com",
-        "active",
-        "UK",
-        datetime(2024, 6, 1),
-        datetime(9999, 12, 31),
-        True,
-    ),
-]
-
-ORDER_WITH_NO_CUSTOMER = [(1, 99, "LAPTOP", 999.99, "completed", "2024-01-15")]
+from my_project.utils.test_data_builder import make_dataframe
 
 
 # ===========================
@@ -64,9 +17,19 @@ class TestFactOrdersTransform:
     def dim_path(self, spark, tmp_path_factory, dim_customers_schema):
         """Write standard dim_customers once and reuse across tests"""
         path = str(tmp_path_factory.mktemp("dim_customers"))
-        spark.createDataFrame(SINGLE_CUSTOMER_IN_DIM, dim_customers_schema).write.mode(
-            "overwrite"
-        ).parquet(path)
+        make_dataframe(
+            spark,
+            dim_customers_schema,
+            [
+                {
+                    "customer_key": 1001,
+                    "customer_id": 1,
+                    "effective_from": datetime(2024, 1, 1),
+                    "effective_to": datetime(9999, 12, 31),
+                    "is_current": True,
+                }
+            ],
+        ).write.mode("overwrite").parquet(path)
         return path
 
     @pytest.fixture(scope="class")
@@ -82,7 +45,18 @@ class TestFactOrdersTransform:
     @pytest.fixture(scope="class")
     def single_order_result(self, spark, task, silver_orders_schema):
         """Transform a single order — reused across multiple tests"""
-        orders = spark.createDataFrame(SINGLE_ORDER, silver_orders_schema)
+        orders = make_dataframe(
+            spark,
+            silver_orders_schema,
+            [
+                {
+                    "order_id": 1,
+                    "customer_id": 1,
+                    "product": "LAPTOP",
+                    "order_date": "2024-01-15",
+                }
+            ],
+        )
         return task.transform(orders).cache()
 
     def test_result_is_dataframe(self, single_order_result):
@@ -116,8 +90,25 @@ class TestFactOrdersTransform:
     ):
         """Order should join to customer version active at time of order"""
         dim_path = str(tmp_path_factory.mktemp("dim_v"))
-        spark.createDataFrame(
-            TWO_VERSIONS_OF_CUSTOMER, dim_customers_schema
+        make_dataframe(
+            spark,
+            dim_customers_schema,
+            [
+                {
+                    "customer_key": 1001,
+                    "customer_id": 1,
+                    "effective_from": datetime(2024, 1, 1),
+                    "effective_to": datetime(2024, 6, 1),
+                    "is_current": False,
+                },
+                {
+                    "customer_key": 1002,
+                    "customer_id": 1,
+                    "effective_from": datetime(2024, 6, 1),
+                    "effective_to": datetime(9999, 12, 31),
+                    "is_current": True,
+                },
+            ],
         ).write.mode("overwrite").parquet(dim_path)
 
         task = FactOrdersTask(
@@ -126,10 +117,11 @@ class TestFactOrdersTransform:
             output_path="unused",
             dim_customers_path=dim_path,
         )
-        orders = spark.createDataFrame(
-            [(1, 1, "LAPTOP", 999.99, "completed", "2024-06-15")], silver_orders_schema
+        orders = make_dataframe(
+            spark,
+            silver_orders_schema,
+            [{"order_id": 1, "customer_id": 1, "order_date": "2024-06-15"}],
         )
-
         result = task.transform(orders)
         assert result.count() == 1
         assert result.collect()[0]["customer_key"] == 1002
@@ -139,9 +131,19 @@ class TestFactOrdersTransform:
     ):
         """Orders with no matching customer should have null customer_key"""
         dim_path = str(tmp_path_factory.mktemp("dim_null"))
-        spark.createDataFrame(SINGLE_CUSTOMER_IN_DIM, dim_customers_schema).write.mode(
-            "overwrite"
-        ).parquet(dim_path)
+        make_dataframe(
+            spark,
+            dim_customers_schema,
+            [
+                {
+                    "customer_key": 1001,
+                    "customer_id": 1,
+                    "effective_from": datetime(2024, 1, 1),
+                    "effective_to": datetime(9999, 12, 31),
+                    "is_current": True,
+                }
+            ],
+        ).write.mode("overwrite").parquet(dim_path)
 
         task = FactOrdersTask(
             spark=spark,
@@ -149,7 +151,11 @@ class TestFactOrdersTransform:
             output_path="unused",
             dim_customers_path=dim_path,
         )
-        orders = spark.createDataFrame(ORDER_WITH_NO_CUSTOMER, silver_orders_schema)
+        orders = make_dataframe(
+            spark,
+            silver_orders_schema,
+            [{"order_id": 1, "customer_id": 99, "order_date": "2024-01-15"}],
+        )
         result = task.transform(orders)
         assert result.count() == 1
         assert result.collect()[0]["customer_key"] is None
@@ -171,13 +177,32 @@ class TestFactOrdersTaskRun:
         dim_path = str(tmp_path_factory.mktemp("dim"))
         output_path = str(tmp_path_factory.mktemp("fact_orders"))
 
-        spark.createDataFrame(SINGLE_ORDER, silver_orders_schema).write.mode(
-            "overwrite"
-        ).parquet(orders_path)
+        make_dataframe(
+            spark,
+            silver_orders_schema,
+            [
+                {
+                    "order_id": 1,
+                    "customer_id": 1,
+                    "product": "LAPTOP",
+                    "order_date": "2024-01-15",
+                }
+            ],
+        ).write.mode("overwrite").parquet(orders_path)
 
-        spark.createDataFrame(SINGLE_CUSTOMER_IN_DIM, dim_customers_schema).write.mode(
-            "overwrite"
-        ).parquet(dim_path)
+        make_dataframe(
+            spark,
+            dim_customers_schema,
+            [
+                {
+                    "customer_key": 1001,
+                    "customer_id": 1,
+                    "effective_from": datetime(2024, 1, 1),
+                    "effective_to": datetime(9999, 12, 31),
+                    "is_current": True,
+                }
+            ],
+        ).write.mode("overwrite").parquet(dim_path)
 
         FactOrdersTask(
             spark=spark,
